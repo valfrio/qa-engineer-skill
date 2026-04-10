@@ -1,270 +1,270 @@
-# Spec Template — Adversarial Test Plan
+# Plantilla de Spec — Plan de Test Adversarial
 
-This is a **fully-worked example** of what a good test plan looks like. Use it as a reference when prompting the Planner agent, when reviewing its output, or when writing a plan by hand.
+Este es un **ejemplo completamente desarrollado** de cómo se ve un buen plan de test. Úsalo como referencia cuando hagas prompt al agente Planner, cuando revises su output, o cuando escribas un plan a mano.
 
-The example covers a generic **e-commerce "Place Order"** flow — a domain everyone understands and which has the same adversarial richness (line items, totals, taxes, state transitions, inventory, customer snapshot, multi-role permissions) as most real business features. The same structure applies to any feature in any app — the angles are the same; only the concrete attacks change.
-
----
-
-## How to use this template
-
-1. **As a reference for the Planner.** Tell Claude: *"Generate a plan for [feature] in the same shape as `references/spec-template.md`."* The Planner will produce a plan with all 8 angles laid out the same way.
-2. **As an audit checklist.** When the Planner returns a plan, compare it section-by-section against this template. Missing angle = revise.
-3. **As a worked example for new team members.** Read this once and you'll understand what "adversarial QA" means in concrete terms.
+El ejemplo cubre un flujo genérico de **e-commerce "Place Order"** — un dominio que todos entienden y que tiene la misma riqueza adversarial (líneas de pedido, totales, impuestos, transiciones de estado, inventario, snapshot de cliente, permisos multi-rol) que la mayoría de features reales de negocio. La misma estructura aplica a cualquier feature en cualquier app — los ángulos son los mismos; solo cambian los ataques concretos.
 
 ---
 
-# Test Plan: Place Order (`/checkout`)
+## Cómo usar esta plantilla
 
-**Feature:** Customer fills cart, enters shipping/payment, places order. System creates Order, decrements inventory, charges payment, sends confirmation email.
+1. **Como referencia para el Planner.** Dile a Claude: *"Genera un plan para [feature] con la misma forma que `references/spec-template.md`."* El Planner producirá un plan con los 8 ángulos dispuestos de la misma forma.
+2. **Como checklist de auditoría.** Cuando el Planner devuelva un plan, compáralo sección por sección contra esta plantilla. Ángulo faltante = revisar.
+3. **Como ejemplo desarrollado para nuevos miembros del equipo.** Léelo una vez y entenderás qué significa "QA adversarial" en términos concretos.
+
+---
+
+# Plan de Test: Place Order (`/checkout`)
+
+**Feature:** El cliente rellena el carrito, introduce envío/pago, y hace el pedido. El sistema crea Order, decrementa inventario, cobra el pago, envía email de confirmación.
 **URL:** `https://staging.example.com/checkout`
-**Spec author:** Claude (Planner agent), reviewed by Claude (QA loop)
-**Reference seed:** `tests/seed.spec.ts`
+**Autor del spec:** Claude (agente Planner), revisado por Claude (loop de QA)
+**Seed de referencia:** `tests/seed.spec.ts`
 
 ---
 
-## Mindset
+## Mentalidad
 
-Try to **break** the checkout. Do not check that it renders — assume it renders. Look for: silent duplicate orders, broken inventory decrements, payment double-charges, tax/total miscalculations, and side effects (confirmation emails) firing twice or not at all.
+Intenta **romper** el checkout. No verifiques que renderiza — asume que renderiza. Busca: pedidos duplicados en silencio, decrementos de inventario rotos, doble cargo en el pago, miscálculos de impuestos/totales, y efectos secundarios (emails de confirmación) disparándose dos veces o ninguna.
 
-## Affected areas (blast radius)
+## Áreas afectadas (radio de explosión)
 
-Identified before generating tests, used as input for Angle 7.
+Identificadas antes de generar tests, usadas como input para el Ángulo 7.
 
-| # | Neighbor | Why it might break |
+| # | Vecino | Por qué podría romperse |
 |---|---------|--------------------|
-| 1 | `/orders` (order list) | Consumes the same Order model; new order must appear with correct totals |
-| 2 | `/orders/{id}` (order detail) | Reads the customer snapshot; if snapshot drifts, detail shows wrong data |
-| 3 | `/products` and inventory store | Items in the order must decrement stock atomically |
-| 4 | Order confirmation email | Triggered on order creation; must fire exactly once with correct totals |
-| 5 | `/cart` (cart page) | Shares the line-item / pricing component with checkout |
-| 6 | Admin order management UI | Reads the same Order model from a different role |
+| 1 | `/orders` (lista de pedidos) | Consume el mismo modelo Order; el pedido nuevo debe aparecer con totales correctos |
+| 2 | `/orders/{id}` (detalle de pedido) | Lee el snapshot del cliente; si el snapshot deriva, el detalle muestra datos equivocados |
+| 3 | `/products` y store de inventario | Los items del pedido deben decrementar stock atómicamente |
+| 4 | Email de confirmación de pedido | Se dispara al crear el pedido; debe dispararse exactamente una vez con totales correctos |
+| 5 | `/cart` (página de carrito) | Comparte el componente de líneas/precios con checkout |
+| 6 | UI de gestión de pedidos del admin | Lee el mismo modelo Order desde un rol distinto |
 
 ---
 
-## Test inventory
+## Inventario de tests
 
-Plan covers all 8 adversarial angles plus the happy path. Total: 24 tests.
+El plan cubre los 8 ángulos adversariales más el happy path. Total: 24 tests.
 
-| Angle | # tests |
+| Ángulo | # tests |
 |-------|---------|
-| 0 — Happy paths (minority) | 3 |
-| 1 — Empty inputs | 3 |
-| 2 — Invalid data | 3 |
-| 3 — Boundary values | 3 |
-| 4 — Special chars / injection | 2 |
-| 5 — Double-click / rapid submit | 2 |
-| 6 — Navigation edge cases | 3 |
-| 7 — Regression in nearby features | 4 |
-| 8 — Auth / permission edges | 1 |
+| 0 — Happy paths (minoría) | 3 |
+| 1 — Inputs vacíos | 3 |
+| 2 — Datos inválidos | 3 |
+| 3 — Valores límite | 3 |
+| 4 — Caracteres especiales / inyección | 2 |
+| 5 — Doble click / submit rápido | 2 |
+| 6 — Edge cases de navegación | 3 |
+| 7 — Regresión en features cercanas | 4 |
+| 8 — Edges de auth / permisos | 1 |
 
 ---
 
-## Angle 0 — Happy paths (the minority)
+## Ángulo 0 — Happy paths (la minoría)
 
-### TEST 0.1 — Place order with one item, valid card, no discount
+### TEST 0.1 — Hacer pedido con un item, tarjeta válida, sin descuento
 
-- **Action:** Add 1 item ($50) to cart, navigate to checkout, fill shipping (valid address), fill card (valid test card), submit.
-- **Expected:** Order created in `paid` state. Subtotal $50.00, tax $4.00, total $54.00. Appears at top of order list.
-- **Assertions:**
-  - URL changes to `/orders/{id}` after submit
-  - `getByText(/order #/i)` visible in detail header
-  - `getByText('$54.00')` visible in totals
-  - `getByText(/paid/i)` (status badge) visible
-  - Network: `POST /api/orders` returns 200, no console errors
+- **Acción:** Añade 1 item ($50) al carrito, navega al checkout, rellena envío (dirección válida), rellena tarjeta (tarjeta de test válida), submit.
+- **Esperado:** Pedido creado en estado `paid`. Subtotal $50.00, tax $4.00, total $54.00. Aparece arriba en la lista de pedidos.
+- **Aserciones:**
+  - La URL cambia a `/orders/{id}` después del submit
+  - `getByText(/order #/i)` visible en la cabecera del detalle
+  - `getByText('$54.00')` visible en los totales
+  - `getByText(/paid/i)` (badge de estado) visible
+  - Network: `POST /api/orders` devuelve 200, sin errores de console
 
-### TEST 0.2 — Place order with multiple items and mixed tax rates
+### TEST 0.2 — Hacer pedido con varios items y tasas de impuesto mixtas
 
-- **Action:** Add 3 items: ($50 taxable 8%), ($30 taxable 8%, qty 2), ($100 tax-exempt). Submit.
-- **Expected:** Subtotal $210.00, tax $8.80, total $218.80.
-- **Assertions:** Each line visible in detail with its individual subtotal/tax breakdown. Total matches calculated value.
+- **Acción:** Añade 3 items: ($50 con tax 8%), ($30 con tax 8%, qty 2), ($100 exento de tax). Submit.
+- **Esperado:** Subtotal $210.00, tax $8.80, total $218.80.
+- **Aserciones:** Cada línea visible en el detalle con su breakdown individual de subtotal/tax. El total coincide con el valor calculado.
 
-### TEST 0.3 — Apply valid discount code
+### TEST 0.3 — Aplicar código de descuento válido
 
-- **Action:** From checkout, enter discount code `SAVE10`. Submit.
-- **Expected:** Total reduced by 10%. Order created with discount line item.
-- **Assertions:** Discount visible in totals breakdown. Final total matches calculated value.
-
----
-
-## Angle 1 — Empty inputs
-
-### TEST 1.1 — Submit checkout with empty cart
-
-- **Action:** Navigate directly to `/checkout` with an empty cart, submit anyway.
-- **Expected:** Validation error or redirect back to cart. No order created.
-- **Assertions:** Error message "Your cart is empty" visible OR redirected to `/cart`. No new entry in order list.
-
-### TEST 1.2 — Submit with no shipping address
-
-- **Action:** Add item, leave all shipping fields empty, fill payment, submit.
-- **Expected:** Validation errors on each shipping field. Submit blocked.
-- **Assertions:** Error messages visible. Network: no successful POST.
-
-### TEST 1.3 — Submit with no payment method
-
-- **Action:** Add item, fill shipping, leave card fields empty, submit.
-- **Expected:** Validation error on payment. Submit blocked.
-- **Assertions:** Error visible on the payment section specifically.
+- **Acción:** Desde checkout, introduce el código de descuento `SAVE10`. Submit.
+- **Esperado:** Total reducido en 10%. Pedido creado con la línea de descuento.
+- **Aserciones:** Descuento visible en el breakdown de totales. Total final coincide con el valor calculado.
 
 ---
 
-## Angle 2 — Invalid data
+## Ángulo 1 — Inputs vacíos
 
-### TEST 2.1 — Negative quantity in cart
+### TEST 1.1 — Submit checkout con carrito vacío
 
-- **Action:** Modify cart line quantity to `-5` (via UI control or DOM).
-- **Expected:** Either rejected with validation, or clamped to 0/1. Total never goes negative.
-- **Assertions:** Error message OR field clamped. Total is non-negative.
+- **Acción:** Navega directamente a `/checkout` con un carrito vacío, submit igualmente.
+- **Esperado:** Error de validación o redirect de vuelta al carrito. No se crea pedido.
+- **Aserciones:** Mensaje "Your cart is empty" visible O redirigido a `/cart`. Sin entrada nueva en la lista de pedidos.
 
-### TEST 2.2 — Invalid card number
+### TEST 1.2 — Submit sin dirección de envío
 
-- **Action:** Enter card `1234 5678 9012 3456` (fails Luhn check), valid CVV/expiry.
-- **Expected:** Card validation rejects. Submit blocked OR payment processor returns error.
-- **Assertions:** Error message visible. No order created.
+- **Acción:** Añade item, deja todos los campos de envío vacíos, rellena pago, submit.
+- **Esperado:** Errores de validación en cada campo de envío. Submit bloqueado.
+- **Aserciones:** Mensajes de error visibles. Network: sin POST exitoso.
 
-### TEST 2.3 — Malformed email in customer field
+### TEST 1.3 — Submit sin método de pago
 
-- **Action:** Enter `not-an-email`, `user@`, `@domain.com`, `user@@domain.com` in email field.
-- **Expected:** Validation error on each.
-- **Assertions:** Field-specific error visible. No order created.
-
----
-
-## Angle 3 — Boundary values
-
-### TEST 3.1 — Quantity = 0
-
-- **Action:** Set cart line quantity to `0`.
-- **Expected:** Either rejected with validation, or line removed from cart. Whatever the rule is, it must be **deterministic** — not silently dropped.
-- **Assertions:** Line behavior matches rule. Total reflects the line correctly (or excludes it explicitly).
-
-### TEST 3.2 — Maximum quantity (999999)
-
-- **Action:** Set quantity to `999999`, unit price `99999.99`.
-- **Expected:** Calculation does not overflow. Total displayed correctly. Rounding to 2 decimals.
-- **Assertions:** Total displayed without scientific notation, no `Infinity`, no `NaN`. Stock check rejects if not available.
-
-### TEST 3.3 — Address line with 10,000 characters
-
-- **Action:** Paste a 10K-char string into shipping address line.
-- **Expected:** Either truncated to a documented max (e.g., 200 chars) or rejected. Database does not throw 500.
-- **Assertions:** No 500 error. Order detail does not break layout.
+- **Acción:** Añade item, rellena envío, deja los campos de tarjeta vacíos, submit.
+- **Esperado:** Error de validación en pago. Submit bloqueado.
+- **Aserciones:** Error visible específicamente en la sección de pago.
 
 ---
 
-## Angle 4 — Special chars / injection
+## Ángulo 2 — Datos inválidos
 
-### TEST 4.1 — Customer name with HTML/script
+### TEST 2.1 — Cantidad negativa en carrito
 
-- **Action:** Customer name = `<script>alert(1)</script><img src=x onerror=alert(2)>`.
-- **Expected:** Rendered as escaped text in order detail and confirmation email. No alert fires. No image loads.
-- **Assertions:** `getByText('<script>')` is visible (literal text, not interpreted). Console has no errors.
+- **Acción:** Modifica la cantidad de una línea del carrito a `-5` (vía control UI o DOM).
+- **Esperado:** O rechazado con validación, o clamped a 0/1. El total nunca se vuelve negativo.
+- **Aserciones:** Mensaje de error O campo clamped. El total no es negativo.
 
-### TEST 4.2 — Address with unicode + emoji + RTL
+### TEST 2.2 — Número de tarjeta inválido
 
-- **Action:** Shipping name `José María 山田 🎉 مرحبا`. Submit order.
-- **Expected:** Order stores name correctly. Detail view and email render all characters.
-- **Assertions:** Detail view shows the full name. DB field matches input byte-for-byte.
+- **Acción:** Introduce tarjeta `1234 5678 9012 3456` (falla check de Luhn), CVV/expiry válidos.
+- **Esperado:** La validación de tarjeta rechaza. Submit bloqueado O el procesador de pago devuelve error.
+- **Aserciones:** Mensaje de error visible. No se crea pedido.
 
----
+### TEST 2.3 — Email malformado en campo de cliente
 
-## Angle 5 — Double-click / rapid submit
-
-### TEST 5.1 — Double-click "Place Order" button
-
-- **Action:** Fill checkout form completely. Use `dblclick()` on submit button.
-- **Expected:** Exactly **one** order created, not two. Card charged once.
-- **Assertions:** Order list contains exactly one new order. Payment processor log shows one charge.
-
-### TEST 5.2 — Rapid resubmit on payment failure retry
-
-- **Action:** Trigger a payment decline, then click "Try again" 5 times in 200ms.
-- **Expected:** Payment retried **once** per click intent, not 5 times. No partial state.
-- **Assertions:** Network shows controlled retry count. No duplicate order.
+- **Acción:** Introduce `not-an-email`, `user@`, `@domain.com`, `user@@domain.com` en el campo de email.
+- **Esperado:** Error de validación en cada uno.
+- **Aserciones:** Error específico de campo visible. No se crea pedido.
 
 ---
 
-## Angle 6 — Navigation edge cases
+## Ángulo 3 — Valores límite
 
-### TEST 6.1 — Back button after successful order
+### TEST 3.1 — Cantidad = 0
 
-- **Action:** Place an order. After redirect to confirmation page, click browser back.
-- **Expected:** User returns to checkout (clean state) OR cart. **No** resubmission. **No** duplicate order.
-- **Assertions:** No second order in list.
+- **Acción:** Pon la cantidad de una línea del carrito a `0`.
+- **Esperado:** O rechazado con validación, o la línea se quita del carrito. Sea cual sea la regla, debe ser **determinista** — no se elimina en silencio.
+- **Aserciones:** El comportamiento de la línea coincide con la regla. El total refleja la línea correctamente (o la excluye explícitamente).
 
-### TEST 6.2 — Refresh during payment processing
+### TEST 3.2 — Cantidad máxima (999999)
 
-- **Action:** Submit checkout, refresh the page while the spinner is showing.
-- **Expected:** No double-charge. Either the order completes once, or the refresh shows a clean state.
-- **Assertions:** Exactly one order in list. Payment processor shows one charge.
+- **Acción:** Pon cantidad a `999999`, precio unitario `99999.99`.
+- **Esperado:** El cálculo no hace overflow. Total mostrado correctamente. Redondeo a 2 decimales.
+- **Aserciones:** Total mostrado sin notación científica, sin `Infinity`, sin `NaN`. Si no hay stock, el check de stock rechaza.
 
-### TEST 6.3 — Open checkout in two tabs simultaneously
+### TEST 3.3 — Línea de dirección con 10.000 caracteres
 
-- **Action:** Open `/checkout` in tab A and tab B with the same cart. Submit in both.
-- **Expected:** Both succeed independently OR second one detects the cart was already submitted. No duplicate inventory decrement.
-- **Assertions:** Inventory delta matches the actual quantity ordered, not double.
-
----
-
-## Angle 7 — Regression in nearby features (NON-NEGOTIABLE)
-
-### TEST 7.1 — Order list (`/orders`) still paginates and filters correctly
-
-- **Action:** After creating 3 new orders, navigate to list. Apply filter by status = "Paid". Apply filter by date range.
-- **Expected:** Filters work. Pagination works. Counts match.
-- **Assertions:** Filtered list contains only matching orders. Total count matches.
-
-### TEST 7.2 — Order detail reads customer snapshot, not live data
-
-- **Action:** Place an order with customer "John Doe" at "123 Old St". After creation, **update the customer's address in `/account`**. Reload the order detail.
-- **Expected:** Detail view still shows the **original** address from snapshot, NOT the new address.
-- **Assertions:** Address in detail view matches the address at moment of order, not the current customer address.
-
-### TEST 7.3 — Confirmation email fires exactly once
-
-- **Action:** Place an order. Check the test mailbox.
-- **Expected:** Exactly one confirmation email, with correct totals, items, and customer name.
-- **Assertions:** Mailbox count = 1 (not 0, not 2+). Email body contains current order data, no raw `{{variables}}`.
-
-### TEST 7.4 — Inventory was decremented exactly once
-
-- **Action:** Note inventory level for the ordered SKU before the test. After order is placed, check again.
-- **Expected:** Stock decreased by exactly the quantity ordered, not more.
-- **Assertions:** New stock = old stock − line quantity.
+- **Acción:** Pega un string de 10K chars en la línea de dirección de envío.
+- **Esperado:** O truncado a un máximo documentado (ej: 200 chars) o rechazado. La base de datos no lanza un 500.
+- **Aserciones:** Sin error 500. El detalle del pedido no rompe el layout.
 
 ---
 
-## Angle 8 — Auth / permission edges
+## Ángulo 4 — Caracteres especiales / inyección
 
-### TEST 8.1 — Guest checkout vs. logged-in customer
+### TEST 4.1 — Nombre de cliente con HTML/script
 
-- **Action:** As a guest (no session), complete checkout. Then as a logged-in user with a different account, complete a separate checkout.
-- **Expected:** Both succeed. Guest order is associated with the email, not a user account. Logged-in order is associated with the user account. No cross-contamination.
-- **Assertions:** Guest order has `user_id = null`, customer email set. Logged-in order has `user_id` set. Each user only sees their own orders in `/account/orders`.
+- **Acción:** Nombre del cliente = `<script>alert(1)</script><img src=x onerror=alert(2)>`.
+- **Esperado:** Renderizado como texto escapado en el detalle del pedido y el email de confirmación. Sin alert. Sin carga de imagen.
+- **Aserciones:** `getByText('<script>')` visible (texto literal, no interpretado). Console sin errores.
 
----
+### TEST 4.2 — Dirección con unicode + emoji + RTL
 
-## Out of scope (other specs handle these)
-
-- Order cancellation and refunds → covered by `specs/order-cancel.md`
-- Subscription / recurring billing → covered by `specs/subscription.md`
-- Admin order management → covered by `specs/admin-orders.md`
+- **Acción:** Nombre de envío `José María 山田 🎉 مرحبا`. Submit del pedido.
+- **Esperado:** El pedido almacena el nombre correctamente. Detalle y email renderizan todos los caracteres.
+- **Aserciones:** El detalle muestra el nombre completo. El campo de DB coincide con el input byte por byte.
 
 ---
 
-## Coverage assessment
+## Ángulo 5 — Doble click / submit rápido
 
-| Angle | Covered | Notes |
+### TEST 5.1 — Doble click en el botón "Place Order"
+
+- **Acción:** Rellena el formulario de checkout completamente. Usa `dblclick()` en el botón submit.
+- **Esperado:** Exactamente **un** pedido creado, no dos. Tarjeta cargada una sola vez.
+- **Aserciones:** La lista de pedidos contiene exactamente un pedido nuevo. El log del procesador de pago muestra un cargo.
+
+### TEST 5.2 — Resubmit rápido en retry de fallo de pago
+
+- **Acción:** Dispara un decline de pago, después click en "Try again" 5 veces en 200ms.
+- **Esperado:** Pago reintentado **una** vez por intención de click, no 5. Sin estado parcial.
+- **Aserciones:** Network muestra un count de retry controlado. Sin pedido duplicado.
+
+---
+
+## Ángulo 6 — Edge cases de navegación
+
+### TEST 6.1 — Botón atrás después de pedido exitoso
+
+- **Acción:** Haz un pedido. Después del redirect a la página de confirmación, click en el botón atrás del browser.
+- **Esperado:** El usuario vuelve al checkout (estado limpio) O al carrito. **Sin** resubmit. **Sin** pedido duplicado.
+- **Aserciones:** Sin segundo pedido en la lista.
+
+### TEST 6.2 — Refresh durante el procesamiento del pago
+
+- **Acción:** Submit del checkout, refresh de la página mientras el spinner se está mostrando.
+- **Esperado:** Sin doble cargo. O el pedido se completa una vez, o el refresh muestra estado limpio.
+- **Aserciones:** Exactamente un pedido en la lista. El procesador de pago muestra un cargo.
+
+### TEST 6.3 — Abrir checkout en dos pestañas simultáneamente
+
+- **Acción:** Abre `/checkout` en pestaña A y pestaña B con el mismo carrito. Submit en ambas.
+- **Esperado:** Ambas tienen éxito independientemente O la segunda detecta que el carrito ya fue enviado. Sin decremento doble de inventario.
+- **Aserciones:** El delta de inventario coincide con la cantidad real pedida, no el doble.
+
+---
+
+## Ángulo 7 — Regresión en features cercanas (NO NEGOCIABLE)
+
+### TEST 7.1 — La lista de pedidos (`/orders`) sigue paginando y filtrando correctamente
+
+- **Acción:** Después de crear 3 pedidos nuevos, navega a la lista. Aplica filtro por estado = "Paid". Aplica filtro por rango de fechas.
+- **Esperado:** Los filtros funcionan. La paginación funciona. Los counts coinciden.
+- **Aserciones:** La lista filtrada contiene solo pedidos coincidentes. El count total coincide.
+
+### TEST 7.2 — El detalle del pedido lee del snapshot del cliente, no de los datos vivos
+
+- **Acción:** Haz un pedido con cliente "John Doe" en "123 Old St". Después de crearlo, **actualiza la dirección del cliente en `/account`**. Recarga el detalle del pedido.
+- **Esperado:** El detalle sigue mostrando la dirección **original** del snapshot, NO la nueva.
+- **Aserciones:** La dirección en el detalle coincide con la dirección en el momento del pedido, no con la dirección actual del cliente.
+
+### TEST 7.3 — El email de confirmación se dispara exactamente una vez
+
+- **Acción:** Haz un pedido. Revisa el mailbox de test.
+- **Esperado:** Exactamente un email de confirmación, con totales, items y nombre de cliente correctos.
+- **Aserciones:** Count del mailbox = 1 (no 0, no 2+). El cuerpo del email contiene los datos del pedido actuales, sin `{{variables}}` en crudo.
+
+### TEST 7.4 — El inventario fue decrementado exactamente una vez
+
+- **Acción:** Anota el nivel de inventario del SKU pedido antes del test. Después de hacer el pedido, comprueba otra vez.
+- **Esperado:** El stock decreció exactamente en la cantidad pedida, no más.
+- **Aserciones:** Stock nuevo = stock viejo − cantidad de la línea.
+
+---
+
+## Ángulo 8 — Edges de auth / permisos
+
+### TEST 8.1 — Checkout como guest vs cliente logueado
+
+- **Acción:** Como guest (sin sesión), completa el checkout. Después como un usuario logueado con una cuenta distinta, completa otro checkout.
+- **Esperado:** Ambos tienen éxito. El pedido del guest está asociado con el email, no con una cuenta de usuario. El pedido logueado está asociado con la cuenta de usuario. Sin cross-contaminación.
+- **Aserciones:** El pedido del guest tiene `user_id = null`, email del cliente set. El pedido logueado tiene `user_id` set. Cada usuario solo ve sus propios pedidos en `/account/orders`.
+
+---
+
+## Fuera de scope (otros specs los cubren)
+
+- Cancelación de pedidos y refunds → cubierto por `specs/order-cancel.md`
+- Suscripciones / billing recurrente → cubierto por `specs/subscription.md`
+- Gestión de pedidos del admin → cubierto por `specs/admin-orders.md`
+
+---
+
+## Evaluación de cobertura
+
+| Ángulo | Cubierto | Notas |
 |-------|---------|-------|
 | 0 — Happy paths | ✅ | 3 tests |
-| 1 — Empty inputs | ✅ | 3 tests |
-| 2 — Invalid data | ✅ | 3 tests |
-| 3 — Boundary values | ✅ | 3 tests |
-| 4 — Special chars | ✅ | 2 tests |
-| 5 — Double-click | ✅ | 2 tests |
-| 6 — Navigation edges | ✅ | 3 tests |
-| 7 — Nearby regression | ✅ | 4 tests, all 4 critical neighbors covered |
-| 8 — Auth / permissions | ⚠️ | 1 test only — full role matrix recommended as separate spec |
+| 1 — Inputs vacíos | ✅ | 3 tests |
+| 2 — Datos inválidos | ✅ | 3 tests |
+| 3 — Valores límite | ✅ | 3 tests |
+| 4 — Caracteres especiales | ✅ | 2 tests |
+| 5 — Doble click | ✅ | 2 tests |
+| 6 — Edges de navegación | ✅ | 3 tests |
+| 7 — Regresión cercana | ✅ | 4 tests, los 4 vecinos críticos cubiertos |
+| 8 — Auth / permisos | ⚠️ | Solo 1 test — se recomienda matriz completa de roles como spec separado |
 
-**Plan accepted for generation.** Sending to Generator agent.
+**Plan aceptado para generación.** Enviando al agente Generator.

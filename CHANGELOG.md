@@ -1,116 +1,132 @@
 # Changelog
 
-All notable changes to the `qa-engineer` skill are documented here.
+Todos los cambios notables de la skill `qa-engineer` están documentados aquí.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+El formato está basado en [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), y esta skill sigue [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [2.2.1] — 2026-04-10
+
+Traducción completa al español de toda la documentación de la skill (SKILL.md, README, INSTALL, CHANGELOG y los 5 archivos de `references/`). El comportamiento es idéntico a v2.2.0 — solo cambia el idioma.
+
+### Cambiado
+
+- **Toda la documentación traducida al español.** SKILL.md, README.md, INSTALL.md, CHANGELOG.md y los 5 archivos de `references/`. Los términos técnicos (Planner, Generator, Healer, trace, snapshot, browser context, etc.) se mantienen en inglés. Los bloques de código, comandos CLI y nombres de variables también se mantienen en inglés. Las frases trigger de activación del modo EXECUTE están en ambos idiomas para que la skill matchee tanto si el dev escribe en español como en inglés.
+- **Los prompts al Planner se documentan en inglés** porque el agente Playwright procesa mejor instrucciones en inglés. SKILL.md ahora explica explícitamente este patrón: tú piensas en español, traduces el prompt antes de mandarlo al agente.
+- **Bumped frontmatter `version` a `2.2.1`** (patch — solo cambio de idioma, comportamiento idéntico).
+
+### Por qué
+
+El equipo de AppsurDesarrollo trabaja en español. Tener la skill en inglés añadía fricción de lectura al revisar reports de QA, debuggear comportamiento de la skill, o entender el flujo de los dos modos. La traducción reduce esa fricción a coste cero (es solo documentación, no cambia el código de Playwright ni la forma en que la skill se activa).
 
 ---
 
 ## [2.2.0] — 2026-04-10
 
-Reintroduced automatic activation in a token-safe way. The skill now has **two modes**: SUGGEST (auto, ~50 tokens) and EXECUTE (manual, ~100K-300K tokens). Replaces the v2.1.0 fully on-demand model, which lost the discoverability benefit of auto-activation.
+Reintroducida la activación automática de forma token-safe. La skill ahora tiene **dos modos**: SUGGEST (auto, ~50 tokens) y EXECUTE (manual, ~100K-300K tokens). Reemplaza el modelo on-demand puro de v2.1.0, que perdió el beneficio de descubribilidad de la auto-activación.
 
-### Added
+### Añadido
 
-- **SUGGEST mode.** When Claude makes a behavioral change, the skill loads automatically and Claude appends a single-line QA suggestion at the end of its message — for example: *"💡 Este cambio toca el formulario de checkout. ¿Lanzo QA adversarial? → di `haz QA del checkout`"*. No tests run, no agents fire, no reference files loaded. Cost: ~50 tokens per suggestion.
-- **EXECUTE mode.** Triggered when the user explicitly asks for QA OR replies "sí" / "yes" / "dale" / "go" to a SUGGEST line. Runs the full Planner → Generator → Healer workflow.
-- **Mode resolution table** in `SKILL.md` covering the most common situations (behavioral change, doc fix, code review request, explicit QA request, decline) and which mode applies to each.
-- **Hard rules for SUGGEST mode** preventing Claude from running tests, reading reference files, prompting agents, or repeating suggestions after the user declines.
-- **README.md "Running tests against a remote server" section.** Documents the local-dev-against-staging workflow that most teams actually use, with `BASE_URL` env var examples. Makes CI/CD explicitly optional.
+- **Modo SUGGEST.** Cuando Claude hace un cambio behavioral, la skill se carga automáticamente y Claude añade una línea de sugerencia de QA al final de su mensaje — por ejemplo: *"💡 Este cambio toca el formulario de checkout. ¿Lanzo QA adversarial? → di `haz QA del checkout`"*. No se ejecutan tests, no se disparan agentes, no se cargan archivos de referencia. Coste: ~50 tokens por sugerencia.
+- **Modo EXECUTE.** Disparado cuando el usuario pide QA explícitamente O responde "sí" / "yes" / "dale" / "go" a una línea SUGGEST. Ejecuta el workflow completo Planner → Generator → Healer.
+- **Tabla de resolución de modos** en `SKILL.md` cubriendo las situaciones más comunes (cambio behavioral, fix de docs, petición de code review, petición explícita de QA, rechazo) y qué modo aplica a cada una.
+- **Reglas duras del modo SUGGEST** que impiden a Claude ejecutar tests, leer archivos de referencia, llamar a agentes, o repetir sugerencias después de que el usuario rechace.
+- **Sección de README.md "Ejecutar tests en local contra un servidor remoto".** Documenta el workflow dev-local-contra-staging que la mayoría de equipos usan en realidad, con ejemplos de la variable de entorno `BASE_URL`. Hace que CI/CD sea explícitamente opcional.
 
-### Changed
+### Cambiado
 
-- **Frontmatter `description`** rewritten to define both modes precisely so Claude can distinguish them at activation time. Includes the explicit invocation phrases for EXECUTE mode and the trigger conditions for SUGGEST mode.
-- **`SKILL.md` "ACTIVATION RULE" section** rewritten as "ACTIVATION RULES — TWO MODES" with an ASCII flow diagram, separate "When to use" subsections for each mode, the mode resolution table, and the rationale for the design.
-- **Key Principle #2** changed from *"On-demand activation only"* to *"Two modes: SUGGEST (auto, free) and EXECUTE (manual, expensive)"*.
-- **Anti-patterns** updated: removed *"Auto-triggering QA without being asked"*, added four more specific anti-patterns: running EXECUTE without consent, reading reference files in SUGGEST mode, adding the suggestion line to non-behavioral changes, repeating the suggestion after the user already declined.
-- **`INSTALL.md` Step 7 confirmation message** rewritten to explain the two modes to the user upfront, with the SUGGEST/EXECUTE distinction and the hard guarantee that EXECUTE never runs without consent.
-- **`README.md` "How Claude uses this skill"** rewritten around the two-mode model with the cost numbers per mode visible.
-- **Bumped frontmatter `version` to `2.2.0`** (minor — additive behavior change, fully backwards compatible with v2.1.0 prompts).
+- **`description` del frontmatter** reescrito para definir ambos modos con precisión y que Claude pueda distinguirlos en el momento de activación. Incluye las frases explícitas de invocación del modo EXECUTE y las condiciones del trigger del modo SUGGEST.
+- **Sección "ACTIVATION RULE" de `SKILL.md`** reescrita como "REGLAS DE ACTIVACIÓN — DOS MODOS" con un diagrama de flujo ASCII, subsecciones separadas de "Cuándo usar" para cada modo, la tabla de resolución y el rationale del diseño.
+- **Principio Clave #2** cambiado de *"Solo activación on-demand"* a *"Dos modos: SUGGEST (auto, gratis) y EXECUTE (manual, caro)"*.
+- **Anti-patrones** actualizados: quitado *"Auto-disparar QA sin que se pida"*, añadidos cuatro anti-patrones más específicos: ejecutar EXECUTE sin consentimiento, leer archivos de referencia en modo SUGGEST, añadir la línea de sugerencia a cambios no behaviorales, repetir la sugerencia después de que el usuario rechace.
+- **Mensaje de confirmación del Paso 7 de `INSTALL.md`** reescrito para explicar los dos modos al usuario desde el principio, con la distinción SUGGEST/EXECUTE y la garantía dura de que EXECUTE nunca corre sin consentimiento.
+- **Sección "How Claude uses this skill" de `README.md`** reescrita en torno al modelo de dos modos con los números de coste por modo visibles.
+- **Bumped `version` del frontmatter a `2.2.0`** (minor — cambio de comportamiento aditivo, totalmente backwards compatible con prompts de v2.1.0).
 
-### Why
+### Por qué
 
-v2.1.0 fixed the token cost problem of v2.0.0 by making the skill fully on-demand, but it introduced a new problem: **discoverability**. Users had to remember to ask for QA. Many forgot. The discipline that Angle 7 was supposed to enforce got skipped because nobody invoked the skill.
+v2.1.0 arregló el problema de coste de tokens de v2.0.0 haciendo la skill totalmente on-demand, pero introdujo un problema nuevo: **descubribilidad**. Los usuarios tenían que acordarse de pedir QA. Muchos se olvidaban. La disciplina que el Ángulo 7 se suponía que tenía que aplicar se saltaba porque nadie invocaba la skill.
 
-v2.2.0 solves both problems with the two-mode design:
+v2.2.0 resuelve ambos problemas con el diseño de dos modos:
 
-- **SUGGEST is functionally free** (~50 tokens per behavioral change message). Claude reminds the user that QA is available, the user always knows.
-- **EXECUTE only runs on consent.** No surprise token spend. Same cost discipline as v2.1.0.
+- **SUGGEST es funcionalmente gratis** (~50 tokens por mensaje de cambio behavioral). Claude le recuerda al usuario que QA está disponible, el usuario siempre lo sabe.
+- **EXECUTE solo corre con consentimiento.** Sin gasto sorpresa de tokens. Misma disciplina de coste que v2.1.0.
 
-The discoverability is reclaimed without paying the v2.0.0 token tax. Best of both prior versions.
+La descubribilidad se recupera sin pagar el impuesto de tokens de v2.0.0. Lo mejor de las dos versiones anteriores.
 
 ---
 
 ## [2.1.0] — 2026-04-10
 
-Activation model changed from auto-trigger to on-demand. Driven by token cost: the agent loop is expensive (5–10× the cost of the implementation it tests), and running it after every change burned budget without giving the user control over QA timing.
+Modelo de activación cambiado de auto-trigger a on-demand. Motivado por el coste de tokens: el loop del agente es caro (5–10× el coste de la implementación que testea), y ejecutarlo tras cada cambio quemaba presupuesto sin darle al usuario control sobre el timing del QA.
 
-### Changed
+### Cambiado
 
-- **Activation is now ON DEMAND only.** The skill no longer auto-triggers after implementations, bug fixes, or refactors. Claude only invokes it when the user explicitly asks for QA ("haz QA", "test this", "rompe esto", "run QA on X", etc.).
-- **`SKILL.md` "AUTO-TRIGGER RULE" section** renamed to "ACTIVATION RULE". Rewritten to list the explicit phrases that activate the skill and the cases that do **not** activate it. Includes the rationale (token cost + user control).
-- **`SKILL.md` Workflow section** renamed from "Post-Implementation QA (Auto-Triggered)" to "On-Demand QA Pass".
-- **Key Principle #2** changed from *"Every implementation triggers QA"* to *"On-demand activation only"*.
-- **Anti-pattern added:** *"Auto-triggering QA without being asked"*.
-- **Frontmatter `description`** rewritten to make activation rules unambiguous to Claude when matching the skill: explicit phrases that activate, explicit cases that do not.
-- **`INSTALL.md` Step 6** changed from "auto-detect and run smoke check" to "read-only context detection". Installation no longer runs tests, no longer creates files, no longer installs Playwright. All of that happens later, only when the user asks for QA.
-- **`INSTALL.md` Step 7 confirmation message** rewritten to tell the user the skill is on-demand and list the example invocation phrases.
-- **`README.md` "How Claude uses this skill"** section rewritten around explicit invocation. Includes "When to invoke it" guidance (before merge, before deploy, after tricky bug fixes, periodically).
-- **Bumped frontmatter `version` to `2.1.0`** (minor — behavior change, no API break).
+- **La activación es ahora SOLO ON DEMAND.** La skill ya no se auto-dispara después de implementaciones, bug fixes o refactors. Claude solo la invoca cuando el usuario pide QA explícitamente ("haz QA", "test this", "rompe esto", "run QA on X", etc.).
+- **Sección "AUTO-TRIGGER RULE" de `SKILL.md`** renombrada a "ACTIVATION RULE". Reescrita para listar las frases explícitas que activan la skill y los casos que **no** la activan. Incluye el rationale (coste de tokens + control del usuario).
+- **Sección de Workflow de `SKILL.md`** renombrada de "Post-Implementation QA (Auto-Triggered)" a "On-Demand QA Pass".
+- **Principio Clave #2** cambiado de *"Cada implementación dispara QA"* a *"Solo activación on-demand"*.
+- **Anti-patrón añadido:** *"Auto-disparar QA sin que se pida"*.
+- **`description` del frontmatter** reescrito para hacer las reglas de activación inequívocas para Claude al matchear la skill: frases explícitas que activan, casos explícitos que no.
+- **Paso 6 de `INSTALL.md`** cambiado de "auto-detectar y ejecutar smoke check" a "detección de contexto solo lectura". La instalación ya no ejecuta tests, ya no crea archivos, ya no instala Playwright. Todo eso pasa más tarde, solo cuando el usuario pide QA.
+- **Mensaje de confirmación del Paso 7 de `INSTALL.md`** reescrito para decirle al usuario que la skill es on-demand y listar las frases de invocación de ejemplo.
+- **Sección "How Claude uses this skill" de `README.md`** reescrita en torno a la invocación explícita. Incluye guidance de "Cuándo invocarla" (antes de mergear, antes de desplegar, después de bug fixes complicados, periódicamente).
+- **Bumped `version` del frontmatter a `2.1.0`** (minor — cambio de comportamiento, sin break de API).
 
-### Why
+### Por qué
 
-Earlier versions of this skill were aggressively automated: every implementation triggered a QA pass. This had two real problems:
+Las versiones anteriores de esta skill eran agresivamente automáticas: cada implementación disparaba un pase de QA. Esto tenía dos problemas reales:
 
-1. **Token cost.** The Playwright Planner reads accessibility trees of every page it explores. A full QA pass on a non-trivial feature costs 5–10× the tokens of the implementation that triggered it. Running QA after every trivial change (renaming a variable, adjusting a CSS rule, fixing a typo in a route name) burned budget without proportional value.
-2. **User control.** QA timing is a developer decision. They may want to batch QA at end of session, run it only before merges, skip it for spikes, or run it on a different machine. Auto-triggering took that decision away.
+1. **Coste de tokens.** El Planner de Playwright lee los accessibility trees de cada página que explora. Un pase de QA completo sobre una feature no trivial cuesta 5–10× los tokens de la implementación que lo disparó. Ejecutar QA tras cada cambio trivial (renombrar una variable, ajustar una regla CSS, arreglar un typo en el nombre de una ruta) quemaba presupuesto sin valor proporcional.
+2. **Control del usuario.** El timing del QA es una decisión del developer. Pueden querer agruparlo al final de la sesión, ejecutarlo solo antes de mergear, saltárselo para spikes, o ejecutarlo en una máquina diferente. Auto-disparar le quitaba esa decisión.
 
-The skill is still aggressive about *quality* when invoked — the 8 angles, Angle 7, the audit checklist, the mantra — but invocation is now the user's call.
+La skill sigue siendo agresiva sobre la *calidad* cuando se invoca — los 8 ángulos, el Ángulo 7, el checklist de auditoría, el mantra — pero la invocación es ahora decisión del usuario.
 
 ---
 
 ## [2.0.0] — 2026-04-10
 
-Major rewrite. The skill is now adversarial-first by design and packaged for distribution via GitHub.
+Reescritura mayor. La skill es ahora adversarial-first por diseño y empaquetada para distribución vía GitHub.
 
-### Added
+### Añadido
 
-- **Core mantra** at the top of `SKILL.md`: *"You are not testing to confirm features work — you are testing to break them."*
-- **The 8 Adversarial Angles checklist** as a first-class concept in `SKILL.md`. Every test plan must cover the applicable angles. Five out of eight is the minimum for non-trivial features.
-- **Angle 7 deep section** — *Regression in nearby features*. Promoted from a forgettable bullet to a non-negotiable rule with a "type of change → nearby features" mapping table and a 4-step application workflow.
-- **Writing Instructions for the Planner Agent** section with a bad/good prompt comparison, a copyable template, 7 rules for writing prompts, and a 5-question audit checklist for reviewing plans before sending them to the Generator.
-- **`README.md`** — human-readable introduction with installation instructions optimized for Claude as the executor.
-- **`INSTALL.md`** — Claude-facing one-shot install guide. Walks Claude through clone, verify, frontmatter check, and report-back.
-- **`references/spec-template.md`** — fully-worked example of an adversarial test plan covering all 8 angles.
-- **`references/example-qa-report.md`** — fully-worked example of a QA report with bugs classified by severity, top 5 critical, coverage gaps, and new tests added.
+- **Mantra central** al principio de `SKILL.md`: *"No estás testeando para confirmar que las features funcionan — estás testeando para romperlas."*
+- **El checklist de los 8 Ángulos Adversariales** como concepto de primer nivel en `SKILL.md`. Cada plan de test debe cubrir los ángulos aplicables. Cinco de ocho es el mínimo para features no triviales.
+- **Sección profunda del Ángulo 7** — *Regresión en features cercanas*. Promovido de un bullet olvidable a una regla no negociable con una tabla de mapeo "tipo de cambio → features cercanas" y un workflow de aplicación de 4 pasos.
+- **Sección "Cómo escribir instrucciones para el Planner"** con una comparación de prompt bad/good, una plantilla copiable, 7 reglas para escribir prompts, y un checklist de auditoría de 5 preguntas para revisar planes antes de mandarlos al Generator.
+- **`README.md`** — introducción legible por humanos con instrucciones de instalación optimizadas para Claude como ejecutor.
+- **`INSTALL.md`** — guía de instalación one-shot orientada a Claude. Le guía paso a paso por clone, verify, frontmatter check y report.
+- **`references/spec-template.md`** — ejemplo completamente desarrollado de un plan de test adversarial cubriendo los 8 ángulos.
+- **`references/example-qa-report.md`** — ejemplo completamente desarrollado de un report de QA con bugs clasificados por severidad, top 5 críticos, huecos de cobertura y tests nuevos añadidos.
 - **`LICENSE`** — MIT.
-- **Frontmatter metadata**: `license`, `metadata.author`, `metadata.version`, `metadata.repository`.
+- **Metadata del frontmatter**: `license`, `metadata.author`, `metadata.version`, `metadata.repository`.
 
-### Changed
+### Cambiado
 
-- **Frontmatter `name`** changed from `playwright-qa-agents` to `qa-engineer` to align with the directory name and better reflect the role-based framing.
-- **Frontmatter `description`** rewritten to mention adversarial framing, the 8 angles, and Angle 7 explicitly. This improves auto-trigger matching and gives Claude the right frame on first load.
-- **Step 1 of the post-implementation workflow** renamed to *"Identify What Changed AND What's Next To It"* and now requires Claude to name 3–5 specific neighbors before the Planner runs.
-- **Step 3a (Plan)** rewritten to use the adversarial template with all 8 angles inline. Vague prompts are now an explicit anti-pattern.
-- **Key Principles** expanded from 10 to 12. Principle #1 is now the core mantra. Principles #3 and #4 codify the 8-angle floor and Angle 7 as non-negotiable.
-- **Anti-Patterns** expanded with 5 new entries: vague Planner prompts, render-checking, skipping Angle 7, happy-path-majority plans, trusting the Planner blindly.
-- **File structure** — `setup.md`, `qa-methodology.md`, and `ci-cd.md` moved into `references/` to match the path SKILL.md was already documenting.
+- **`name` del frontmatter** cambiado de `playwright-qa-agents` a `qa-engineer` para alinear con el nombre del directorio y reflejar mejor el framing basado en rol.
+- **`description` del frontmatter** reescrito para mencionar el framing adversarial, los 8 ángulos y el Ángulo 7 explícitamente. Esto mejora el matching del auto-trigger y le da a Claude el frame correcto en la primera carga.
+- **Paso 1 del workflow post-implementación** renombrado a *"Identifica qué cambió Y qué hay al lado"* y ahora requiere que Claude nombre 3–5 vecinos específicos antes de que el Planner ejecute.
+- **Paso 3a (Plan)** reescrito para usar la plantilla adversarial con los 8 ángulos inline. Los prompts vagos son ahora un anti-patrón explícito.
+- **Principios Clave** expandidos de 10 a 12. El Principio #1 es ahora el mantra central. Los Principios #3 y #4 codifican el suelo de los 8 ángulos y el Ángulo 7 como no negociable.
+- **Anti-patrones** expandidos con 5 entradas nuevas: prompts vagos al Planner, render-checking, saltarse el Ángulo 7, planes mayoritariamente happy path, confiar ciegamente en el Planner.
+- **Estructura de archivos** — `setup.md`, `qa-methodology.md` y `ci-cd.md` movidos a `references/` para que coincida con el path que `SKILL.md` ya documentaba.
 
-### Philosophy
+### Filosofía
 
-The 1.x version of this skill was a methodology document with an auto-trigger. The 2.x version is a **discipline encoded as a workflow**: Claude can no longer "do QA" by writing a happy-path test plan. The 8 angles and Angle 7 audit make the discipline mechanical.
+La versión 1.x de esta skill era un documento de metodología con un auto-trigger. La versión 2.x es una **disciplina codificada como workflow**: Claude ya no puede "hacer QA" escribiendo un plan de test happy path. Los 8 ángulos y la auditoría del Ángulo 7 hacen la disciplina mecánica.
 
 ---
 
 ## [1.0.0] — 2026-03-15
 
-Initial version (internal, unpackaged).
+Versión inicial (interna, sin empaquetar).
 
-### Added
+### Añadido
 
-- Auto-trigger after every implementation.
-- Playwright Test Agents integration (Planner, Generator, Healer).
-- Generic QA methodology with 7 test categories.
-- Setup guide, CI/CD guide, troubleshooting reference.
-- Multi-context multi-user testing patterns.
-- Clock API patterns for timing-dependent tests.
+- Auto-trigger después de cada implementación.
+- Integración con los Playwright Test Agents (Planner, Generator, Healer).
+- Metodología de QA genérica con 7 categorías de test.
+- Guía de setup, guía de CI/CD, referencia de troubleshooting.
+- Patrones de testing multi-contexto multi-usuario.
+- Patrones de la API Clock para tests dependientes de timing.

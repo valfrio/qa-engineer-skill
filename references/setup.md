@@ -1,107 +1,107 @@
-# Setup Reference — Playwright + Test Agents
+# Referencia de Setup — Playwright + Test Agents
 
-## Prerequisites
+## Prerrequisitos
 
 - Node.js >= 18
-- npm or yarn
-- A running web application (local or staging URL)
-- Test user credentials (if the app is behind auth)
+- npm o yarn
+- Una aplicación web corriendo (URL local o de staging)
+- Credenciales de usuario de test (si la app está detrás de auth)
 
 ---
 
-## Capture: Video, Trace, and Screenshots (READ THIS FIRST)
+## Captura: Vídeo, Trace y Screenshots (LEE ESTO PRIMERO)
 
-Before configuring anything else, understand what Playwright captures on every test run. This skill enforces these defaults — do not turn them off.
+Antes de configurar nada, entiende qué captura Playwright en cada test run. Esta skill fuerza estos defaults — no los desactives.
 
-### Three artifacts, three purposes
+### Tres artefactos, tres propósitos
 
-| Artifact | File | What it gives you | Default in this skill |
+| Artefacto | Archivo | Qué te da | Default en esta skill |
 |---------|------|-------------------|----------------------|
-| **Video** | `video.webm` | Continuous browser recording. Watch what the user "saw". | `on-first-retry` (only on failures) |
-| **Trace** | `trace.zip` | Interactive timeline: every action + DOM snapshot + network + console log. **The primary debugging tool.** | `on-first-retry` |
-| **Screenshot** | `test-failed-1.png` | Single image at the moment of failure. Easy to embed in reports. | `only-on-failure` |
+| **Vídeo** | `video.webm` | Grabación continua del browser. Mira lo que el usuario "vio". | `on-first-retry` (solo en fallos) |
+| **Trace** | `trace.zip` | Timeline interactivo: cada acción + snapshot del DOM + network + console log. **La herramienta principal de debugging.** | `on-first-retry` |
+| **Screenshot** | `test-failed-1.png` | Imagen única en el momento del fallo. Fácil de incrustar en reports. | `only-on-failure` |
 
-### Why traces beat plain video
+### Por qué los traces le ganan al vídeo plano
 
-`expect-cli` and similar tools record video. Playwright records video **and** trace. The trace is dramatically more useful because:
+`expect-cli` y herramientas similares graban vídeo. Playwright graba vídeo **y** trace. El trace es dramáticamente más útil porque:
 
-- **Click any step in the timeline → see the DOM at that exact moment.** Inspect elements as they were rendered, not as they are now.
-- **Network log is timestamped against actions.** See exactly which request fired during which click.
-- **Console log + errors are inline.** No digging through DevTools after the fact.
-- **The trace is portable.** A single `.zip` file. Send it in Slack, attach to a bug report, upload to CI artifacts. Anyone with `npx playwright show-trace trace.zip` can reproduce your debugging session.
+- **Click en cualquier paso del timeline → ves el DOM en ese momento exacto.** Inspeccionas elementos como estaban renderizados, no como están ahora.
+- **El network log está marcado en tiempo contra las acciones.** Ves exactamente qué request se disparó en qué click.
+- **El console log + errores está inline.** No tienes que rebuscar en DevTools después.
+- **El trace es portable.** Un solo archivo `.zip`. Mándalo por Slack, adjúntalo a un bug report, súbelo como artefacto de CI. Cualquiera con `npx playwright show-trace trace.zip` puede reproducir tu sesión de debugging.
 
-### Opening a trace
+### Abrir un trace
 
 ```bash
-# Most recent failed test
+# Test fallido más reciente
 npx playwright show-trace test-results/*/trace.zip
 
-# Specific trace file
+# Archivo de trace específico
 npx playwright show-trace path/to/trace.zip
 
-# Or open the HTML report and click any failed test → Trace tab
+# O abre el report HTML y haz click en cualquier test fallido → tab Trace
 npx playwright show-report
 ```
 
-The trace viewer opens in a browser. Use the timeline at the bottom — every action is a clickable step.
+El trace viewer se abre en un browser. Usa el timeline de abajo — cada acción es un paso clickeable.
 
-### CI artifact upload
+### Subida de artefactos en CI
 
-The GitHub Actions workflow in `ci-cd.md` already uploads `test-results/` and `playwright-report/` as artifacts on every run. After a CI failure, download the artifact, unzip, and run `show-trace` locally — same debugging experience as if you'd run the test on your machine. Future Claude sessions can also download these artifacts and reason about failures from another conversation.
+El workflow de GitHub Actions en `ci-cd.md` ya sube `test-results/` y `playwright-report/` como artefactos en cada run. Después de un fallo en CI, descarga el artefacto, descomprímelo y ejecuta `show-trace` localmente — misma experiencia de debugging que si hubieras corrido el test en tu máquina. Las sesiones futuras de Claude también pueden descargar estos artefactos y razonar sobre los fallos desde otra conversación.
 
-### When to override the defaults
+### Cuándo sobreescribir los defaults
 
-- **Local debugging of a flaky test:** temporarily set `trace: 'on'` and `video: 'on'` to capture every run, including passes.
-- **CI for high-traffic suites:** keep defaults — capturing only failures saves storage.
-- **Never disable trace.** It's the single most valuable artifact this skill produces.
+- **Debugging local de un test flaky:** pon temporalmente `trace: 'on'` y `video: 'on'` para capturar cada run, incluyendo los que pasan.
+- **CI para suites de alto tráfico:** mantén los defaults — capturar solo fallos ahorra storage.
+- **Nunca desactives el trace.** Es el artefacto más valioso que esta skill produce.
 
 ---
 
-## Step 1: Install Playwright
+## Paso 1: Instala Playwright
 
 ```bash
-# Initialize Playwright in your project
+# Inicializa Playwright en tu proyecto
 npm init playwright@latest
 
-# This will:
-# - Install @playwright/test
-# - Create playwright.config.ts
-# - Create a tests/ directory with example
-# - Optionally install browsers
+# Esto va a:
+# - Instalar @playwright/test
+# - Crear playwright.config.ts
+# - Crear un directorio tests/ con un ejemplo
+# - Opcionalmente instalar los browsers
 ```
 
-When prompted:
-- Language: **TypeScript**
-- Tests folder: **tests**
-- GitHub Actions: **Yes** (if you want CI)
-- Install browsers: **Yes**
+Cuando te pregunte:
+- Lenguaje: **TypeScript**
+- Carpeta de tests: **tests**
+- GitHub Actions: **Yes** (si quieres CI)
+- Instalar browsers: **Yes**
 
-## Step 2: Initialize Agents
+## Paso 2: Inicializa los Agentes
 
 ```bash
-# For Claude Code (recommended for this skill)
+# Para Claude Code (recomendado para esta skill)
 npx playwright init-agents --loop=claude
 
-# For VS Code Copilot
+# Para VS Code Copilot
 npx playwright init-agents --loop=vscode
 
-# For OpenCode
+# Para OpenCode
 npx playwright init-agents --loop=opencode
 ```
 
-This creates `.github/` folder with agent definitions (instructions + MCP tools). **Regenerate whenever Playwright is updated.**
+Esto crea la carpeta `.github/` con las definiciones de los agentes (instrucciones + herramientas MCP). **Regenéralo cada vez que actualices Playwright.**
 
-## Step 3: Install Browsers
+## Paso 3: Instala los Browsers
 
 ```bash
-# Install Chromium only (faster, usually sufficient)
+# Instala solo Chromium (más rápido, normalmente suficiente)
 npx playwright install --with-deps chromium
 
-# Or install all browsers
+# O instala todos los browsers
 npx playwright install --with-deps
 ```
 
-## Step 4: Configure playwright.config.ts
+## Paso 4: Configura playwright.config.ts
 
 ```typescript
 import { defineConfig, devices } from '@playwright/test';
@@ -109,22 +109,22 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests',
   
-  /* Maximum time per test */
+  /* Tiempo máximo por test */
   timeout: 30_000,
   
-  /* Assertion timeout */
+  /* Timeout de aserciones */
   expect: { timeout: 5_000 },
   
-  /* Run tests in parallel */
+  /* Ejecutar tests en paralelo */
   fullyParallel: true,
   
-  /* Fail the build on CI if test.only left in source */
+  /* Hacer fallar el build en CI si quedó algún test.only en el código */
   forbidOnly: !!process.env.CI,
   
-  /* Retry failed tests */
+  /* Reintentar tests fallidos */
   retries: process.env.CI ? 2 : 0,
   
-  /* Parallel workers */
+  /* Workers paralelos */
   workers: process.env.CI ? 1 : undefined,
   
   /* Reporter */
@@ -134,26 +134,26 @@ export default defineConfig({
     ['list'],
   ],
 
-  /* Shared settings for all projects */
+  /* Settings compartidos para todos los proyectos */
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:3000',
     
-    /* Collect trace on failure */
+    /* Capturar trace en fallos */
     trace: 'on-first-retry',
     
-    /* Screenshot on failure */
+    /* Screenshot en fallos */
     screenshot: 'only-on-failure',
     
-    /* Video on failure */
+    /* Vídeo en fallos */
     video: 'on-first-retry',
     
-    /* Sensible defaults */
+    /* Defaults sensatos */
     actionTimeout: 10_000,
     navigationTimeout: 15_000,
   },
 
   projects: [
-    /* Setup project for authentication */
+    /* Setup project para autenticación */
     {
       name: 'setup',
       testMatch: /.*\.setup\.ts/,
@@ -168,14 +168,14 @@ export default defineConfig({
       dependencies: ['setup'],
     },
 
-    /* Uncomment for multi-browser */
+    /* Descomenta para multi-browser */
     // {
     //   name: 'firefox',
     //   use: { ...devices['Desktop Firefox'] },
     //   dependencies: ['setup'],
     // },
     
-    /* Mobile viewport */
+    /* Viewport mobile */
     // {
     //   name: 'mobile-chrome',
     //   use: { ...devices['Pixel 5'] },
@@ -183,7 +183,7 @@ export default defineConfig({
     // },
   ],
 
-  /* Run local dev server before starting tests */
+  /* Ejecutar el dev server local antes de empezar los tests */
   // webServer: {
   //   command: 'npm run dev',
   //   url: 'http://localhost:3000',
@@ -192,9 +192,9 @@ export default defineConfig({
 });
 ```
 
-## Step 5: Authentication Setup
+## Paso 5: Setup de Autenticación
 
-Create `tests/auth.setup.ts` for apps that require login:
+Crea `tests/auth.setup.ts` para apps que requieran login:
 
 ```typescript
 import { test as setup, expect } from '@playwright/test';
@@ -202,27 +202,27 @@ import { test as setup, expect } from '@playwright/test';
 const authFile = 'playwright/.auth/user.json';
 
 setup('authenticate', async ({ page }) => {
-  // Navigate to login
+  // Navega al login
   await page.goto('/login');
   
-  // Fill credentials
+  // Rellena credenciales
   await page.getByLabel('Email').fill(process.env.TEST_USER_EMAIL || 'test@example.com');
   await page.getByLabel('Password').fill(process.env.TEST_USER_PASSWORD || 'testpassword');
   
   // Submit
   await page.getByRole('button', { name: 'Log in' }).click();
   
-  // Wait for auth to complete
+  // Espera a que la auth complete
   await page.waitForURL('/dashboard');
   
-  // Save signed-in state
+  // Guarda el estado autenticado
   await page.context().storageState({ path: authFile });
 });
 ```
 
-### Multi-role auth (recommended for any app with permissions)
+### Auth multi-rol (recomendado para cualquier app con permisos)
 
-Most real apps have at least 2-3 roles (admin, user, guest). Set up one auth file per role and parameterize tests:
+La mayoría de apps reales tienen al menos 2-3 roles (admin, user, guest). Configura un archivo de auth por rol y parametriza los tests:
 
 ```typescript
 // tests/auth.setup.ts
@@ -246,7 +246,7 @@ for (const role of roles) {
 }
 ```
 
-Then in `playwright.config.ts`, define one project per role:
+Después en `playwright.config.ts`, define un proyecto por rol:
 
 ```typescript
 projects: [
@@ -267,30 +267,30 @@ projects: [
 ],
 ```
 
-### Auth strategies — pick the one that matches your stack
+### Estrategias de auth — elige la que coincida con tu stack
 
-Three patterns cover ~95% of real apps. Use semantic locators (`getByLabel`, `getByRole`) so the same code works regardless of framework.
+Tres patrones cubren ~95% de las apps reales. Usa locators semánticos (`getByLabel`, `getByRole`) para que el mismo código funcione independientemente del framework.
 
-#### Pattern A — Session cookie + CSRF (server-rendered apps)
+#### Patrón A — Cookie de sesión + CSRF (apps server-rendered)
 
-Applies to most server-rendered frameworks: Laravel, Rails, Django, Symfony, ASP.NET MVC, Phoenix, Express + sessions, etc. Login submits a form, server sets a session cookie, subsequent requests carry it automatically.
+Aplica a la mayoría de frameworks server-rendered: Laravel, Rails, Django, Symfony, ASP.NET MVC, Phoenix, Express + sessions, etc. El login envía un formulario, el servidor pone una cookie de sesión, las requests siguientes la llevan automáticamente.
 
 ```typescript
 setup('authenticate (session + CSRF)', async ({ page }) => {
-  // Always start clean — stale CSRF tokens are the #1 cause of flaky auth
+  // Empieza siempre limpio — los CSRF tokens stale son la causa #1 de auth flaky
   await page.context().clearCookies();
 
   await page.goto('/login');
 
-  // Semantic locators work across i18n and framework variants
+  // Los locators semánticos funcionan en distintos i18n y variantes de framework
   await page.getByLabel(/email|user|correo/i).fill(process.env.TEST_USER_EMAIL!);
   await page.getByLabel(/password|contraseña|mot de passe/i).fill(process.env.TEST_USER_PASSWORD!);
   await page.getByRole('button', { name: /log in|sign in|iniciar sesión|entrar/i }).click();
 
-  // Wait for the post-login redirect — adjust the regex to your app
+  // Espera el redirect post-login — ajusta el regex a tu app
   await page.waitForURL(/\/dashboard|\/home|\/$/);
 
-  // Sanity check: a session-related cookie should exist
+  // Sanity check: debería existir alguna cookie relacionada con sesión
   const cookies = await page.context().cookies();
   const hasSession = cookies.some(c =>
     /session|auth|jwt|sid/i.test(c.name) || /xsrf|csrf/i.test(c.name)
@@ -303,9 +303,9 @@ setup('authenticate (session + CSRF)', async ({ page }) => {
 });
 ```
 
-#### Pattern B — Token-based (SPA + REST API)
+#### Patrón B — Token (SPA + REST API)
 
-Applies to React/Vue/Angular SPAs that store a JWT or API token in `localStorage` after login. Faster than UI auth — call the API directly.
+Aplica a SPAs de React/Vue/Angular que guardan un JWT o token de API en `localStorage` después del login. Más rápido que la auth por UI — llama directamente a la API.
 
 ```typescript
 setup('authenticate (API token)', async ({ request, page }) => {
@@ -326,47 +326,47 @@ setup('authenticate (API token)', async ({ request, page }) => {
 });
 ```
 
-#### Pattern C — OAuth / SSO (third-party identity provider)
+#### Patrón C — OAuth / SSO (proveedor de identidad de terceros)
 
-Applies to apps that delegate auth to Google, Microsoft, Auth0, Okta, etc. Three options ranked by reliability:
+Aplica a apps que delegan auth a Google, Microsoft, Auth0, Okta, etc. Tres opciones ordenadas por fiabilidad:
 
-1. **Best:** bypass the OAuth flow entirely with a test-only login endpoint that issues a session for a test user. Add `/test-login?user=qa@test.com` guarded by `APP_ENV === 'testing'`.
-2. **OK:** use the provider's test mode if it offers one (Auth0 has this).
-3. **Last resort:** automate the provider's login UI. Fragile — providers change their HTML often.
+1. **Mejor:** salta el flujo de OAuth completamente con un endpoint de login solo-para-test que emite una sesión para un usuario de test. Añade `/test-login?user=qa@test.com` protegido por `APP_ENV === 'testing'`.
+2. **OK:** usa el modo de test del proveedor si lo tiene (Auth0 lo tiene).
+3. **Último recurso:** automatiza la UI de login del proveedor. Frágil — los proveedores cambian su HTML a menudo.
 
-### Common auth failures (framework-agnostic)
+### Fallos comunes de auth (framework-agnósticos)
 
-| Symptom | Cause | Fix |
+| Síntoma | Causa | Fix |
 |---------|-------|-----|
-| `waitForURL` times out | Login failed silently — credentials wrong | Check `.env` values; try logging in manually first |
-| `419` / `403` mid-test | CSRF token expired or session reused across runs | `clearCookies()` at start of `auth.setup.ts` |
-| `401 Unauthenticated` after auth setup passes | `storageState` path mismatch between setup and project config | Use the exact same path string in both places |
-| Auth works locally, fails in CI | `BASE_URL` / cookie domain mismatch | Set `BASE_URL` env in CI to the deployed app URL |
-| Session expires mid-test | Long test exceeded server session lifetime | Shorten the test, or extend session lifetime in test env |
-| Flaky pass/fail every other run | Two parallel workers hitting the same user account | Give each worker its own test user, or run auth-dependent tests with `workers: 1` |
+| `waitForURL` da timeout | El login falló en silencio — credenciales mal | Revisa los valores del `.env`; intenta loguearte manualmente primero |
+| `419` / `403` a mitad de test | El CSRF token expiró o la sesión se reusó entre runs | `clearCookies()` al inicio de `auth.setup.ts` |
+| `401 Unauthenticated` después de que el auth setup pase | El path de `storageState` no coincide entre setup y la config del proyecto | Usa exactamente el mismo string de path en ambos sitios |
+| Auth funciona en local, falla en CI | `BASE_URL` o dominio de cookie distinto | Pon la env `BASE_URL` en CI a la URL de la app desplegada |
+| La sesión expira a mitad de test | Test largo excedió el lifetime de sesión del servidor | Acorta el test, o extiende el lifetime de sesión en el entorno de test |
+| Pasa/falla flaky cada otra run | Dos workers paralelos pegando a la misma cuenta de usuario | Dale a cada worker su propio usuario de test, o ejecuta los tests dependientes de auth con `workers: 1` |
 
-### Multi-tenant auth (subdomain or path-based)
+### Auth multi-tenant (basada en subdominio o path)
 
-If your app is multi-tenant, the test user must belong to a specific tenant. Either:
+Si tu app es multi-tenant, el usuario de test debe pertenecer a un tenant específico. O bien:
 
-- Pre-seed test tenants and use one auth file per tenant, OR
-- Use a single tenant for tests and isolate test data with a `test_` prefix.
+- Pre-seedea tenants de test y usa un archivo de auth por tenant, O
+- Usa un solo tenant para tests y aísla los datos de test con un prefijo `test_`.
 
-Document your choice in the test seeder so future devs (and Claude) know which tenant they're hitting.
+Documenta tu elección en el seeder de test para que los devs futuros (y Claude) sepan a qué tenant están pegando.
 
-## Step 6: Custom Fixtures
+## Paso 6: Fixtures Custom
 
-Create `tests/fixtures.ts`:
+Crea `tests/fixtures.ts`:
 
 ```typescript
 import { test as base, expect } from '@playwright/test';
 
-// Extend base test with custom fixtures
+// Extiende el test base con fixtures custom
 export const test = base.extend<{
-  // Add custom fixtures here
+  // Añade fixtures custom aquí
   authenticatedPage: any;
 }>({
-  // Example: a page that's already at the app
+  // Ejemplo: una página que ya está en la app
   authenticatedPage: async ({ page }, use) => {
     await page.goto('/');
     await use(page);
@@ -376,30 +376,30 @@ export const test = base.extend<{
 export { expect };
 ```
 
-## Step 7: Seed Test
+## Paso 7: Seed Test
 
-Create `tests/seed.spec.ts`:
+Crea `tests/seed.spec.ts`:
 
 ```typescript
 import { test, expect } from './fixtures';
 
 test('seed', async ({ page }) => {
-  // Navigate to the app
+  // Navega a la app
   await page.goto('/');
   
-  // Verify the app loaded correctly
+  // Verifica que la app cargó correctamente
   await expect(page).toHaveTitle(/.+/);
   
-  // This seed test serves as:
-  // 1. Bootstrap for Planner/Generator agents
-  // 2. Example of test structure and conventions
-  // 3. Environment validation
+  // Este seed test sirve como:
+  // 1. Bootstrap para los agentes Planner/Generator
+  // 2. Ejemplo de estructura y convenciones de test
+  // 3. Validación del entorno
 });
 ```
 
-## Step 8: Environment Variables
+## Paso 8: Variables de Entorno
 
-Create `.env` for local testing:
+Crea `.env` para testing local:
 
 ```bash
 # .env
@@ -407,12 +407,12 @@ BASE_URL=http://localhost:3000
 TEST_USER_EMAIL=qa@example.com
 TEST_USER_PASSWORD=secure_test_password
 
-# For API testing
+# Para testing de API
 API_BASE_URL=http://localhost:3000/api
 API_KEY=test_api_key
 ```
 
-Add to `.gitignore`:
+Añade al `.gitignore`:
 ```
 playwright/.auth/
 test-results/
@@ -420,44 +420,44 @@ playwright-report/
 .env
 ```
 
-## Step 9: Verify Setup
+## Paso 9: Verifica el Setup
 
 ```bash
-# Run the seed test to verify everything works
+# Ejecuta el seed test para verificar que todo funciona
 npx playwright test seed.spec.ts
 
-# Open the HTML report
+# Abre el report HTML
 npx playwright show-report
 
-# View traces for debugging
+# Mira los traces para debugging
 npx playwright show-trace test-results/*/trace.zip
 ```
 
-## Step 10: Specs Directory
+## Paso 10: Directorio de Specs
 
 ```bash
 mkdir -p specs
 ```
 
-This is where the Planner agent will save test plans as Markdown files.
+Aquí es donde el agente Planner guardará los planes de test como archivos Markdown.
 
 ---
 
-## Project Structure After Setup
+## Estructura del Proyecto Después del Setup
 
 ```
 project/
-├── .github/                      # Agent definitions (auto-generated)
+├── .github/                      # Definiciones de agentes (auto-generadas)
 │   ├── playwright-planner.md
 │   ├── playwright-generator.md
 │   └── playwright-healer.md
-├── specs/                        # Test plans (Planner output)
+├── specs/                        # Planes de test (output del Planner)
 ├── tests/
-│   ├── fixtures.ts               # Custom fixtures
+│   ├── fixtures.ts               # Fixtures custom
 │   ├── seed.spec.ts              # Seed test
-│   └── auth.setup.ts             # Auth setup
+│   └── auth.setup.ts             # Setup de auth
 ├── playwright/
-│   └── .auth/                    # Stored auth state
+│   └── .auth/                    # Estado de auth guardado
 ├── playwright.config.ts
 ├── .env
 └── package.json
@@ -465,33 +465,33 @@ project/
 
 ---
 
-## Useful Commands
+## Comandos Útiles
 
 ```bash
-# Run all tests
+# Ejecutar todos los tests
 npx playwright test
 
-# Run specific test file
+# Ejecutar un archivo de test específico
 npx playwright test tests/checkout/place-order.spec.ts
 
-# Run tests matching a pattern
+# Ejecutar tests que coincidan con un patrón
 npx playwright test --grep "place order"
 
-# Run in headed mode (see the browser)
+# Ejecutar en modo headed (ver el browser)
 npx playwright test --headed
 
-# Run in debug mode
+# Ejecutar en modo debug
 npx playwright test --debug
 
-# Run in UI mode (interactive)
+# Ejecutar en modo UI (interactivo)
 npx playwright test --ui
 
-# Generate test via codegen
+# Generar test vía codegen
 npx playwright codegen http://localhost:3000
 
-# Show last report
+# Mostrar el último report
 npx playwright show-report
 
-# View a trace
+# Ver un trace
 npx playwright show-trace path/to/trace.zip
 ```

@@ -1,6 +1,6 @@
 ---
 name: qa-engineer
-description: "Adversarial-first E2E QA. Two activation modes — SUGGEST mode (auto, low cost) and EXECUTE mode (on user request, expensive). The core mantra: you are NOT testing to confirm features work — you are testing to BREAK them. Uses Playwright Test Agents (Planner → Generator → Healer) driven by Claude, structured around 8 mandatory adversarial angles (empty inputs, invalid data, boundary values, special chars/injection, double-click, navigation edges, regression in nearby features, auth/permission edges). Angle 7 (regression in nearby features) is non-negotiable: every QA pass re-tests the neighbors of the changed code. SUGGEST mode: load this skill into context whenever Claude makes any behavioral change (new feature, bug fix, refactor, schema/API change, form/flow modification). In suggest mode Claude does NOT run any tests — it appends a single-line suggestion at the end of the implementation message offering an adversarial QA pass with the exact phrase to invoke it. EXECUTE mode: when the user explicitly asks for QA with phrases like 'haz QA', 'testea esto', 'rompe esto', 'valida esto', 'prueba la app', 'lanza tests', 'run QA', 'test this adversarially', or says yes to a SUGGEST line, run the full Planner → Generator → Healer workflow. NEVER run the full workflow without explicit user consent. Covers: first-time Playwright setup, auth setup for protected apps, adversarial test plan generation, test execution, self-healing tests, optional CI/CD integration with video/trace artifacts, and a full QA methodology for exhaustive validation. Works with any web app regardless of stack."
+description: "QA E2E adversarial. Dos modos de activación — modo SUGGEST (auto, bajo coste) y modo EXECUTE (a petición del usuario, caro). El mantra central: NO estás testeando para confirmar que las features funcionan — estás testeando para INTENTAR ROMPERLAS. Usa los Playwright Test Agents (Planner → Generator → Healer) orquestados por Claude, estructurados en torno a 8 ángulos adversariales obligatorios (inputs vacíos, datos inválidos, valores límite, caracteres especiales/inyección, doble click, edge cases de navegación, regresión en features cercanas, edges de auth/permisos). El Ángulo 7 (regresión en features cercanas) es no negociable: cada pase de QA re-testea los vecinos del código que cambió. Modo SUGGEST: carga esta skill en contexto siempre que Claude haga cualquier cambio behavioral (nueva feature, bug fix, refactor, cambio de schema/API, modificación de un formulario o flujo). En modo SUGGEST Claude NO ejecuta ningún test — añade una línea de sugerencia al final del mensaje de implementación ofreciendo un pase adversarial con la frase exacta para invocarlo. Modo EXECUTE: cuando el usuario pide QA explícitamente con frases como 'haz QA', 'testea esto', 'rompe esto', 'valida esto', 'prueba la app', 'lanza tests', 'run QA', 'test this adversarially', o responde sí/dale/yes/go a una línea SUGGEST, ejecuta el workflow completo Planner → Generator → Healer. NUNCA ejecutes el workflow completo sin consentimiento explícito del usuario. Cubre: setup inicial de Playwright, setup de auth para apps protegidas, generación adversarial de planes de test, ejecución de tests, self-healing, integración CI/CD opcional con artefactos de vídeo/trace, y una metodología completa de QA para validación exhaustiva. Funciona con cualquier app web independientemente del stack."
 license: MIT
 metadata:
   author: AppsurDesarrollo
@@ -8,210 +8,211 @@ metadata:
   repository: "https://github.com/AppsurDesarrollo/qa-engineer-skill"
 ---
 
-# qa-engineer — Adversarial E2E Testing Skill
+# qa-engineer — Skill de Testing E2E Adversarial
 
-## Core Mantra
+## Mantra Central
 
-> **You are not testing to confirm the feature works. You are testing to try to break it.**
+> **No estás testeando para confirmar que la feature funciona. Estás testeando para intentar romperla.**
 
-This single sentence is the soul of the skill. Internalize it before every QA session:
+Esta única frase es el alma de la skill. Interiorízala antes de cada sesión de QA:
 
-- A test that "checks the page renders" is **worthless**. It only catches the bugs nobody would have shipped anyway.
-- A test that submits an empty form, double-clicks the button, navigates back mid-flow, and verifies a nearby feature still works **earns its keep**.
-- If you finish a QA session without having tried to break something, **you did not do QA** — you did a smoke test.
+- Un test que "verifica que la página renderiza" es **inútil**. Solo caza los bugs que nadie habría enviado a producción de todos modos.
+- Un test que envía un formulario vacío, hace doble click en el botón, navega hacia atrás a mitad del flujo, y verifica que una feature cercana sigue funcionando **se gana su sitio**.
+- Si terminas una sesión de QA sin haber intentado romper algo, **no hiciste QA** — hiciste un smoke test.
 
-The Planner, Generator, and Healer agents are tools. The mindset is yours. Every prompt you send to the Planner, every test the Generator writes, every fix the Healer applies — all of it should be in service of *trying to break the system* on behalf of the user.
+Los agentes Planner, Generator y Healer son herramientas. La mentalidad es tuya. Cada prompt que mandas al Planner, cada test que escribe el Generator, cada arreglo que aplica el Healer — todo debe estar al servicio de *intentar romper el sistema* en nombre del usuario.
 
 > **"Si no lo has validado intentando romperlo, no funciona."**
 
 ---
 
-## ACTIVATION RULES — TWO MODES (CRITICAL — read before doing anything else)
+## REGLAS DE ACTIVACIÓN — DOS MODOS (CRÍTICO — léelo antes de hacer nada)
 
-This skill has **two activation modes**. The mode determines whether Claude *suggests* QA or *runs* QA. **Confusing them costs tokens and user trust.**
+Esta skill tiene **dos modos de activación**. El modo determina si Claude *sugiere* QA o *ejecuta* QA. **Confundirlos cuesta tokens y confianza del usuario.**
 
 ```
                   ┌─────────────────────┐
-                  │  Skill loaded into  │
-                  │   Claude's context  │
+                  │   Skill cargada en  │
+                  │  contexto de Claude │
                   └──────────┬──────────┘
                              │
               ┌──────────────┴───────────────┐
               │                              │
               ▼                              ▼
     ┌─────────────────┐            ┌──────────────────┐
-    │  SUGGEST mode   │            │  EXECUTE mode    │
+    │   Modo SUGGEST  │            │   Modo EXECUTE   │
     │ (auto, ~50 tok) │            │ (manual, ~200K)  │
     └─────────────────┘            └──────────────────┘
-    Triggered by Claude            Triggered by user
-    making a behavioral            explicitly asking
-    change.                        for QA.
+    Disparado porque Claude        Disparado porque el
+    está haciendo un cambio        usuario pide QA
+    behavioral.                    explícitamente.
     
-    Claude appends ONE             Claude runs the full
-    suggestion line at the         Planner → Generator →
-    end of its message.            Healer workflow.
-    NO tests run.                  Tests run, report produced.
+    Claude añade UNA línea         Claude ejecuta el
+    de sugerencia al final         workflow completo
+    de su mensaje.                 Planner → Generator →
+    NO se ejecutan tests.          Healer. Tests corren,
+                                   se produce un report.
 ```
 
-### SUGGEST mode — when to use it
+### Modo SUGGEST — cuándo usarlo
 
-**Trigger:** Claude has just made or is about to make a **behavioral change** to the user's project. Examples:
+**Disparador:** Claude acaba de hacer o está a punto de hacer un **cambio behavioral** en el proyecto del usuario. Ejemplos:
 
-- New feature or component
-- Bug fix that changes runtime behavior
-- Refactor that touches a flow
-- API endpoint added / changed
-- Database schema migration
-- Form, flow, or UI interaction modified
+- Nueva feature o componente
+- Bug fix que cambia el comportamiento en runtime
+- Refactor que toca un flujo
+- Endpoint de API añadido o modificado
+- Migración de schema de base de datos
+- Formulario, flujo o interacción de UI modificados
 
-**Action:** Finish the implementation normally. Report what you did. Then, **at the very end of your message**, append exactly one suggestion line in the user's language:
+**Acción:** Termina la implementación normalmente. Reporta lo que hiciste. Después, **al final de tu mensaje**, añade exactamente una línea de sugerencia en el idioma del usuario:
 
 > 💡 *Este cambio toca [feature]. ¿Lanzo QA adversarial? → di* `haz QA del [feature]`
 
-or in English:
+o en inglés:
 
 > 💡 *This change touches [feature]. Want me to run an adversarial QA pass? → say* `run QA on [feature]`
 
-**Hard rules in SUGGEST mode:**
+**Reglas duras del modo SUGGEST:**
 
-- **DO NOT** run any test, agent, or Playwright command. The whole point of SUGGEST mode is to not burn tokens.
-- **DO NOT** read `qa-methodology.md`, `setup.md`, or any other reference file. They are only loaded in EXECUTE mode.
-- **DO NOT** generate a test plan, prompt the Planner, or call any browser tool.
-- **DO NOT** add the suggestion line to messages that don't involve a behavioral change (pure docs, comments, styling, config tweaks, conversation, planning).
-- **DO NOT** add the suggestion line if the user has already declined QA earlier in the same conversation. Ask once, respect the answer.
-- **DO NOT** add more than one suggestion line per message. One line, at the end. Period.
+- **NO** ejecutes ningún test, agente o comando de Playwright. El sentido del modo SUGGEST es no quemar tokens.
+- **NO** leas `qa-methodology.md`, `setup.md` ni ningún otro archivo de referencia. Solo se cargan en modo EXECUTE.
+- **NO** generes un plan de test, llames al Planner ni invoques ninguna herramienta de browser.
+- **NO** añadas la línea de sugerencia a mensajes que no impliquen un cambio behavioral (docs puras, comentarios, estilos, ajustes de config, conversación, planificación).
+- **NO** añadas la línea de sugerencia si el usuario ya rechazó QA antes en la misma conversación. Pregunta una vez, respeta la respuesta.
+- **NO** añadas más de una línea de sugerencia por mensaje. Una línea, al final. Punto.
 
-### EXECUTE mode — when to use it
+### Modo EXECUTE — cuándo usarlo
 
-**Trigger:** the user explicitly asks for QA with any of these (in any language):
+**Disparador:** el usuario pide QA explícitamente con cualquiera de estas frases (en cualquier idioma):
 
 - "haz QA", "testea esto", "rompe esto", "valida esto", "prueba la app", "lanza los tests", "haz un pase adversarial"
 - "run QA", "test this", "test this adversarially", "break this", "regression test", "run the playwright suite"
-- The user says yes / claro / dale / sí / go to a SUGGEST line you previously appended
-- The user invokes the skill by name (`/qa`, "use the qa-engineer skill")
-- Any explicit mention of QA, E2E testing, Playwright, regression, break testing, adversarial testing in the form of a request
+- El usuario responde sí / claro / dale / yes / go a una línea SUGGEST que añadiste antes
+- El usuario invoca la skill por nombre (`/qa`, "usa la skill qa-engineer")
+- Cualquier mención explícita a QA, testing E2E, Playwright, regresión, break testing o testing adversarial en forma de petición
 
-**Action:** Run the full **Workflow: On-Demand QA Pass** below (Steps 1–6). Read the reference files as needed. Generate the plan, run the agents, produce the QA report.
+**Acción:** Ejecuta el **Workflow: Pase de QA bajo demanda** completo (Pasos 1–6) más abajo. Lee los archivos de referencia que necesites. Genera el plan, ejecuta los agentes, produce el report de QA.
 
-### Mode resolution table
+### Tabla de resolución de modos
 
-| Situation | Mode | What Claude does |
+| Situación | Modo | Qué hace Claude |
 |-----------|------|------------------|
-| User says "add a new field to the order form" | SUGGEST | Implement → at end of message: *"💡 Este cambio toca el formulario de pedido. ¿Lanzo QA adversarial?"* |
-| User says "fix the typo in the README" | NEITHER | No behavioral change. No suggestion line. |
-| User says "haz QA del checkout" | EXECUTE | Run the full workflow on the checkout feature |
-| User says "yes" right after a SUGGEST line | EXECUTE | Run on the feature mentioned in the SUGGEST line |
-| User says "no thanks" or "later" to a SUGGEST line | NEITHER | Stop suggesting QA for the rest of the conversation |
-| User asks a question about QA without asking to run it | NEITHER | Answer the question, no suggestion line |
-| User says "review this code" | NEITHER | Code review, not QA. No suggestion line. |
+| Usuario dice "añade un nuevo campo al formulario de pedidos" | SUGGEST | Implementa → al final del mensaje: *"💡 Este cambio toca el formulario de pedidos. ¿Lanzo QA adversarial?"* |
+| Usuario dice "arregla el typo del README" | NINGUNO | No hay cambio behavioral. No hay línea de sugerencia. |
+| Usuario dice "haz QA del checkout" | EXECUTE | Ejecuta el workflow completo sobre la feature checkout |
+| Usuario dice "sí" justo después de una línea SUGGEST | EXECUTE | Ejecuta sobre la feature mencionada en la línea SUGGEST |
+| Usuario dice "no gracias" o "luego" a una línea SUGGEST | NINGUNO | Deja de sugerir QA en el resto de la conversación |
+| Usuario hace una pregunta sobre QA sin pedir ejecutarlo | NINGUNO | Responde la pregunta, sin línea de sugerencia |
+| Usuario dice "revisa este código" | NINGUNO | Es code review, no QA. Sin línea de sugerencia. |
 
-### Why two modes
+### Por qué dos modos
 
-The previous version of this skill auto-ran the full workflow after every change. That cost 100K-300K tokens per change. With this two-mode design:
+La versión anterior de esta skill ejecutaba el workflow completo automáticamente tras cada cambio. Eso costaba 100K-300K tokens por cambio. Con este diseño de dos modos:
 
-- **SUGGEST mode costs ~50 tokens per implementation message** (one line appended). Functionally free.
-- **EXECUTE mode costs the full QA pass** but only when the user opts in.
+- **El modo SUGGEST cuesta ~50 tokens por mensaje de implementación** (una línea añadida). Funcionalmente gratis.
+- **El modo EXECUTE cuesta el pase de QA completo** pero solo cuando el usuario opta por ejecutarlo.
 
-The user always knows QA is available because Claude reminds them (SUGGEST). The user always controls cost because Claude waits for the green light (EXECUTE). Best of both.
-
----
-
-## Overview
-
-This skill sets up and runs exhaustive automated QA using **Playwright Test Agents** (Planner → Generator → Healer) with Claude as the orchestrating AI loop. It validates any web app through happy paths, edge cases, error conditions, break testing, and regression suites.
-
-**Three agents work together:**
-- **🎭 Planner** — Explores the app, produces Markdown test plans
-- **🎭 Generator** — Transforms plans into executable Playwright Test files
-- **🎭 Healer** — Runs failing tests, auto-repairs selectors/waits, re-runs
+El usuario siempre sabe que QA está disponible porque Claude se lo recuerda (SUGGEST). El usuario siempre controla el coste porque Claude espera la luz verde (EXECUTE). Lo mejor de ambos.
 
 ---
 
-## Quick Reference
+## Visión general
 
-Before starting, read the appropriate reference file:
+Esta skill configura y ejecuta QA exhaustivo automatizado usando los **Playwright Test Agents** (Planner → Generator → Healer) con Claude como loop de IA orquestador. Valida cualquier app web a través de happy paths, edge cases, condiciones de error, break testing y suites de regresión.
 
-| Task | Reference File |
+**Tres agentes trabajando juntos:**
+- **🎭 Planner** — Explora la app, produce planes de test en Markdown
+- **🎭 Generator** — Transforma los planes en archivos de Playwright Test ejecutables
+- **🎭 Healer** — Ejecuta los tests fallidos, auto-repara selectores/waits, los re-ejecuta
+
+---
+
+## Referencia rápida
+
+Antes de empezar, lee el archivo de referencia que corresponda:
+
+| Tarea | Archivo de referencia |
 |------|----------------|
-| First-time setup of Playwright + Agents | `references/setup.md` |
-| QA methodology, test categories & patterns | `references/qa-methodology.md` |
-| CI/CD integration & post-deploy workflow | `references/ci-cd.md` |
+| Setup inicial de Playwright + Agentes | `references/setup.md` |
+| Metodología de QA, categorías de test y patrones | `references/qa-methodology.md` |
+| Integración CI/CD y workflow post-deploy | `references/ci-cd.md` |
 
-**Always read `references/setup.md` first if the project doesn't have Playwright configured.**
+**Lee siempre `references/setup.md` primero si el proyecto no tiene Playwright configurado.**
 
 ---
 
-## The 8 Adversarial Angles (memorize this checklist)
+## Los 8 Ángulos Adversariales (memoriza este checklist)
 
-Every test plan, every Planner prompt, every spec file you write **must** consider these eight angles. They are the minimum surface area of a real QA pass. If a test plan covers fewer than five of them for a non-trivial feature, the plan is incomplete — send it back to the Planner.
+Cada plan de test, cada prompt al Planner, cada archivo de spec que escribas **debe** considerar estos ocho ángulos. Son la superficie mínima de un pase de QA real. Si un plan de test cubre menos de cinco para una feature no trivial, el plan está incompleto — devuélvelo al Planner.
 
-| # | Angle | What it means | Example attack |
+| # | Ángulo | Qué significa | Ejemplo de ataque |
 |---|-------|--------------|----------------|
-| **1** | **Empty inputs** | Submit forms / call endpoints with nothing filled in | Submit checkout with empty cart, send PATCH with `{}` body |
-| **2** | **Invalid data** | Wrong types, wrong formats, wrong shapes | Email `not-an-email`, phone `abc`, date `2026-13-45`, JSON missing required keys |
-| **3** | **Boundary values** | The edges where bugs hide: `0`, `-1`, `null`, `""`, `MAX_INT`, `10K chars` | Quantity `0`, negative price, name with 10,000 characters, year `1900` and `2099` |
-| **4** | **Special chars & injection** | Unicode, emoji, RTL, scripts, SQL, path traversal | `<script>alert(1)</script>`, `'; DROP TABLE--`, `🎉日本語`, `../../etc/passwd` |
-| **5** | **Double-click / rapid submit** | Race the user against themselves and the network | Double-click "Place order", spam "Send", click submit 5x in 100ms |
-| **6** | **Navigation edge cases** | Browser mechanics that bypass app assumptions | Back button after submit, refresh mid-payment, direct URL to step 3, open same flow in 2 tabs, deep-link to a deleted resource |
-| **7** | **Regression in nearby features** | The change you just made probably broke something *next to it* — go look | After editing the checkout form, verify cart pagination, filters, order list, and the *quote/draft* form still work (shared components!) |
-| **8** | **Auth & permission edges** | Logged out, wrong role, expired session, cross-tenant | Hit the URL as guest, as wrong role, after `clearCookies()`, with another tenant's ID in the URL |
+| **1** | **Inputs vacíos** | Enviar formularios / llamar endpoints sin nada relleno | Submit del checkout con carrito vacío, PATCH con body `{}` |
+| **2** | **Datos inválidos** | Tipos equivocados, formatos equivocados, shapes equivocados | Email `not-an-email`, teléfono `abc`, fecha `2026-13-45`, JSON sin las claves obligatorias |
+| **3** | **Valores límite** | Los bordes donde se esconden los bugs: `0`, `-1`, `null`, `""`, `MAX_INT`, `10K caracteres` | Cantidad `0`, precio negativo, nombre de 10.000 caracteres, año `1900` y `2099` |
+| **4** | **Caracteres especiales e inyección** | Unicode, emoji, RTL, scripts, SQL, path traversal | `<script>alert(1)</script>`, `'; DROP TABLE--`, `🎉日本語`, `../../etc/passwd` |
+| **5** | **Doble click / submit rápido** | Pone al usuario contra sí mismo y contra la red | Doble click en "Place order", spam en "Send", click en submit 5 veces en 100ms |
+| **6** | **Edge cases de navegación** | Mecánicas del browser que se saltan las suposiciones de la app | Botón atrás tras submit, refresh a mitad del pago, URL directa al paso 3, abrir el mismo flujo en 2 pestañas, deep-link a un recurso borrado |
+| **7** | **Regresión en features cercanas** | El cambio que acabas de hacer probablemente rompió algo *al lado* — ve a mirar | Tras editar el formulario de checkout, verifica que la paginación del carrito, los filtros, la lista de pedidos y el formulario *quote/draft* siguen funcionando (¡componentes compartidos!) |
+| **8** | **Edges de auth y permisos** | Sin sesión, rol equivocado, sesión expirada, cross-tenant | Pegar a la URL como guest, como rol equivocado, después de `clearCookies()`, con el ID de otro tenant en la URL |
 
-### How to use the checklist
+### Cómo usar el checklist
 
-- **Per feature:** for any non-trivial change, the Planner must produce at least one test per applicable angle. Five out of eight is the floor; eight out of eight is the standard.
-- **Per Planner prompt:** paste the relevant angles directly into the prompt — don't trust the agent to remember them. See *Writing Instructions for the Planner* below.
-- **Per review:** when reading the Planner's output before generating tests, count the angles. Missing angle = revise the plan, don't proceed to the Generator.
-- **Angle 7 is the most-forgotten.** Make it a hard rule: every feature change ships with at least one regression test against a nearby feature. See the dedicated section below.
+- **Por feature:** para cualquier cambio no trivial, el Planner debe producir al menos un test por ángulo aplicable. Cinco de ocho es el suelo; ocho de ocho es el estándar.
+- **Por prompt al Planner:** pega los ángulos relevantes directamente en el prompt — no confíes en que el agente los recuerde. Ver *Cómo escribir instrucciones para el Planner* más abajo.
+- **Por revisión:** al leer el output del Planner antes de generar tests, cuenta los ángulos. Ángulo faltante = revisa el plan, no continúes al Generator.
+- **El Ángulo 7 es el más olvidado.** Hazlo regla dura: cada cambio de feature se entrega con al menos un test de regresión contra una feature cercana. Ver la sección dedicada más abajo.
 
 ---
 
-## Angle 7 in depth — Regression in Nearby Features
+## Ángulo 7 en profundidad — Regresión en Features Cercanas
 
-Most "small bugs" are not bugs in the thing you changed. They are bugs in the thing *next to* the thing you changed — a sibling component, a shared service, a list view that consumed an API whose shape just shifted.
+La mayoría de los "bugs pequeños" no son bugs en la cosa que cambiaste. Son bugs en la cosa *al lado* de lo que cambiaste — un componente hermano, un servicio compartido, una vista de lista que consumía una API cuyo shape acaba de cambiar.
 
-When the Planner explores a changed feature, it must also be told to **walk one step outwards** and re-test the neighbors. Concretely:
+Cuando el Planner explora una feature modificada, también debe recibir la orden de **dar un paso hacia afuera** y re-testear los vecinos. Concretamente:
 
-### What counts as "nearby"
+### Qué cuenta como "cercano"
 
-| Type of change | Nearby features to re-test |
+| Tipo de cambio | Features cercanas a re-testear |
 |---------------|----------------------------|
-| Form / page | Other pages that use the same Blade component, sibling pages in the same module, the list view that this form feeds |
-| Model / Eloquent relation | Every page that lists, filters, or aggregates this model; every PDF / export / API endpoint that serializes it |
-| API endpoint | Every consumer of that endpoint (UI, mobile, webhooks, third parties) |
-| Shared component (`<x-clinic.btn>`, `<x-clinic.form-card>`, etc.) | At least 3 random pages that already use the component |
-| State machine transition | All other transitions of the same entity (one new arrow can break the others) |
-| Migration / schema | Every seeder, every factory, every report querying the changed table |
-| Auth / middleware | Every protected route in the affected role |
+| Formulario / página | Otras páginas que usan el mismo componente, páginas hermanas en el mismo módulo, la vista de lista a la que alimenta este formulario |
+| Modelo / relación de ORM | Cada página que lista, filtra o agrega este modelo; cada PDF / export / endpoint de API que lo serializa |
+| Endpoint de API | Cada consumidor de ese endpoint (UI, móvil, webhooks, terceros) |
+| Componente compartido (botones, cards, formularios reutilizables) | Al menos 3 páginas aleatorias que ya usan el componente |
+| Transición de máquina de estados | Todas las demás transiciones de la misma entidad (una flecha nueva puede romper las otras) |
+| Migración / schema | Cada seeder, cada factory, cada report que consulta la tabla modificada |
+| Auth / middleware | Cada ruta protegida en el rol afectado |
 
-### How to apply it
+### Cómo aplicarlo
 
-1. **Before the Planner runs**, list out loud the 3–5 nearest neighbors of the change. Write them into the Planner prompt as explicit URLs / features.
-2. **The Planner test plan must include a "Regression — nearby features" section** with one test per neighbor.
-3. **The Generator must produce those tests**, even if they look "obviously fine" in the diff. The point is *not* whether they look fine — the point is to *prove* they still work after the change.
-4. **If you skip Angle 7, write down why** in the QA report. "I skipped regression in nearby features because X" forces the decision to be conscious instead of accidental.
+1. **Antes de que el Planner ejecute**, lista en voz alta los 3–5 vecinos más cercanos al cambio. Escríbelos en el prompt del Planner como URLs / features explícitas.
+2. **El plan de test del Planner debe incluir una sección "Regresión — features cercanas"** con un test por vecino.
+3. **El Generator debe producir esos tests**, aunque parezcan "obviamente fine" en el diff. El punto *no es* si parecen fine — el punto es *probar* que siguen funcionando tras el cambio.
+4. **Si saltas el Ángulo 7, escribe por qué** en el report de QA. "Salté la regresión en features cercanas porque X" fuerza que la decisión sea consciente en vez de accidental.
 
-> Rule of thumb: if your QA report has zero regression tests against nearby features, you didn't do Angle 7. Re-do the QA pass.
+> Regla práctica: si tu report de QA tiene cero tests de regresión contra features cercanas, no hiciste el Ángulo 7. Repite el pase de QA.
 
 ---
 
-## Writing Instructions for the Planner Agent
+## Cómo escribir instrucciones para el Planner
 
-The Planner is only as good as the prompt you give it. Vague prompts produce vague test plans. The single biggest lever you have over QA quality is **how you instruct the Planner**.
+El Planner es tan bueno como el prompt que le das. Prompts vagos producen planes de test vagos. La palanca más grande que tienes sobre la calidad del QA es **cómo instruyes al Planner**.
 
-### The Bad / Good test
+### El test Bad / Good
 
-Read these two prompts. The first one is what a junior QA writes. The second is what a senior QA writes. Always write the second.
+Lee estos dos prompts. El primero es el que escribe un QA junior. El segundo es el que escribe un QA senior. Escribe siempre el segundo.
 
-**❌ Bad — passive, render-checking, single-angle:**
+**❌ Mal — pasivo, comprueba renderizado, un solo ángulo:**
 
 ```
 Use the Playwright Planner to test the login page at /login.
 Verify that the login form works.
 ```
 
-**Why it's bad:** "Works" is not a test goal. The agent will produce a happy-path-only plan ("fill email, fill password, click login, see dashboard") and you will ship a feature that crashes on empty input.
+**Por qué está mal:** "Funciona" no es un objetivo de test. El agente producirá un plan solo de happy path ("rellena email, rellena password, click login, ve dashboard") y enviarás a producción una feature que se rompe con input vacío.
 
-**✅ Good — active, adversarial, multi-angle, with explicit attack list:**
+**✅ Bien — activo, adversarial, multi-ángulo, con lista de ataques explícita:**
 
 ```
 Use the Playwright Planner agent to explore the login flow at https://app.example.com/login.
@@ -237,9 +238,11 @@ Reference seed test: tests/seed.spec.ts
 Save the plan to: specs/login-flow.md
 ```
 
-**Why it's good:** it tells the agent the *mindset*, names every angle from the checklist explicitly, gives concrete attack examples, demands per-test specificity, and fixes the output location.
+> **Nota:** los prompts al Planner se escriben en inglés porque el agente Playwright procesa mejor instrucciones en inglés. Tú piensas en español, pero traduces el prompt antes de enviarlo. La calidad del plan depende de esto.
 
-### Template — copy this for every Planner prompt
+**Por qué está bien:** le dice al agente la *mentalidad*, nombra cada ángulo del checklist explícitamente, da ejemplos de ataque concretos, exige especificidad por test, y fija el path del output.
+
+### Plantilla — copia esto para cada prompt al Planner
 
 ```
 Use the Playwright Planner agent to explore [FEATURE NAME] at [URL].
@@ -263,69 +266,69 @@ Reference seed: tests/seed.spec.ts
 Save plan to: specs/[feature-slug].md
 ```
 
-### Rules for writing Planner prompts
+### Reglas para escribir prompts al Planner
 
-1. **Always name the mindset.** "Try to break X" must appear in every prompt. The agent will not invent the adversarial frame on its own.
-2. **Always list the angles inline.** Don't say "cover edge cases" — paste the angles. Concrete > abstract every time.
-3. **Always give attack examples.** "Invalid data" is too abstract. "Email missing @, phone with letters, date `2026-13-45`" is actionable.
-4. **Always demand per-test specificity.** Action + expected outcome + assertion target. No hand-waving.
-5. **Always name the neighbors for Angle 7.** Don't trust the agent to find them. You know the codebase; the agent doesn't.
-6. **Always pin the output path.** `specs/[feature-slug].md` — predictable, reviewable, committable.
-7. **Never ask the Planner to "test the feature."** Ask it to *break* the feature.
+1. **Nombra siempre la mentalidad.** "Try to break X" debe aparecer en cada prompt. El agente no inventará el frame adversarial por su cuenta.
+2. **Lista siempre los ángulos inline.** No digas "cubre edge cases" — pega los ángulos. Concreto > abstracto siempre.
+3. **Da siempre ejemplos de ataque.** "Datos inválidos" es demasiado abstracto. "Email sin @, teléfono con letras, fecha `2026-13-45`" es accionable.
+4. **Exige siempre especificidad por test.** Acción + resultado esperado + objetivo de la aserción. Sin manos sueltas.
+5. **Nombra siempre los vecinos para el Ángulo 7.** No confíes en que el agente los encuentre. Tú conoces el codebase; el agente no.
+6. **Fija siempre el path del output.** `specs/[feature-slug].md` — predecible, revisable, commiteable.
+7. **Nunca le pidas al Planner "test the feature".** Pídele que *break* la feature.
 
-### Rules for reviewing the Planner's output before sending it to the Generator
+### Reglas para revisar el output del Planner antes de mandarlo al Generator
 
-Before you let the Generator turn a plan into code, audit the plan against the 8 angles:
+Antes de dejar que el Generator convierta un plan en código, audita el plan contra los 8 ángulos:
 
-- [ ] Does the plan have at least one test per applicable angle?
-- [ ] Are happy paths a *minority* of the tests, not the majority?
-- [ ] Does Angle 7 (regression in nearby features) have explicit, named neighbors?
-- [ ] Does each test specify *what to assert on*, not just "verify it works"?
-- [ ] Are there at least 3 tests that would have caught a real bug if the feature were broken?
+- [ ] ¿El plan tiene al menos un test por ángulo aplicable?
+- [ ] ¿Los happy paths son una *minoría* de los tests, no la mayoría?
+- [ ] ¿El Ángulo 7 (regresión en features cercanas) tiene vecinos explícitos y nombrados?
+- [ ] ¿Cada test especifica *qué assertear*, no solo "verificar que funciona"?
+- [ ] ¿Hay al menos 3 tests que habrían cazado un bug real si la feature estuviera rota?
 
-If any answer is no, send the plan back with: *"Revise the plan — angle [N] is missing / weak. Add tests that [specific gap]."*
+Si alguna respuesta es no, devuelve el plan con: *"Revisa el plan — el ángulo [N] falta o está flojo. Añade tests que [hueco específico]."*
 
 ---
 
-## Workflow: On-Demand QA Pass
+## Workflow: Pase de QA bajo demanda
 
-This is the flow Claude runs **when the user explicitly asks for QA** on a specific feature or change. Do not run it speculatively.
+Este es el flujo que Claude ejecuta **cuando el usuario pide QA explícitamente** sobre una feature o cambio concreto. No lo ejecutes especulativamente.
 
-### Step 1 — Identify What Changed AND What's Next To It
+### Paso 1 — Identifica qué cambió Y qué hay al lado
 
-Before running tests, Claude must understand both the scope of the change **and its blast radius into nearby features** (Angle 7).
+Antes de ejecutar tests, Claude debe entender tanto el alcance del cambio **como su radio de explosión hacia features cercanas** (Ángulo 7).
 
 ```
-Questions to self-answer:
-- What entity/feature was created or modified?
-- What operations changed? (create, read, update, delete, state transition)
-- Are there side effects? (emails, notifications, webhooks, scheduled tasks)
-- What shared components / services / endpoints does this touch?
-- NEIGHBORS — name 3 to 5 specific features adjacent to the change:
-    * Other pages using the same Blade/React component
-    * Sibling pages in the same module
-    * The list view feeding from the modified form
-    * Any PDF, export, or API consumer of the modified model
-    * Any other state transition of the same entity
+Preguntas que debes auto-contestarte:
+- ¿Qué entidad/feature se creó o modificó?
+- ¿Qué operaciones cambiaron? (create, read, update, delete, transición de estado)
+- ¿Hay efectos secundarios? (emails, notificaciones, webhooks, tareas programadas)
+- ¿Qué componentes / servicios / endpoints compartidos toca esto?
+- VECINOS — nombra 3 a 5 features específicas adyacentes al cambio:
+    * Otras páginas que usan el mismo componente
+    * Páginas hermanas en el mismo módulo
+    * La vista de lista que se alimenta del formulario modificado
+    * Cualquier PDF, export o consumidor de API del modelo modificado
+    * Cualquier otra transición de estado de la misma entidad
 ```
 
-The list of neighbors is **not optional** — it becomes the input to Angle 7 in Step 3a. If you can't name at least 3 neighbors, you don't understand the change well enough to QA it. Re-read the diff.
+La lista de vecinos **no es opcional** — se convierte en el input del Ángulo 7 en el Paso 3a. Si no puedes nombrar al menos 3 vecinos, no entiendes el cambio lo suficiente como para hacerle QA. Re-lee el diff.
 
-### Step 2 — Run Existing Regression Suite
+### Paso 2 — Ejecuta la suite de regresión existente
 
 ```bash
 npx playwright test
 ```
 
-If any existing tests fail → the implementation broke something. Fix before proceeding.
+Si algún test existente falla → la implementación rompió algo. Arregla antes de continuar.
 
-### Step 3 — Generate New Tests for Changed Feature
+### Paso 3 — Genera tests nuevos para la feature modificada
 
-Use the Planner → Generator → Healer loop:
+Usa el loop Planner → Generator → Healer:
 
-**3a. Plan** — Ask the Planner agent to explore the changed feature using the **adversarial template** (see "Writing Instructions for the Planner Agent" above). Do **not** use vague language like "comprehensive test plan" — paste the 8 angles inline with concrete attack examples and the named neighbors from Step 1.
+**3a. Plan** — Pídele al Planner que explore la feature modificada usando la **plantilla adversarial** (ver "Cómo escribir instrucciones para el Planner" arriba). **No** uses lenguaje vago como "comprehensive test plan" — pega los 8 ángulos inline con ejemplos de ataque concretos y los vecinos nombrados del Paso 1.
 
-Minimum prompt structure:
+Estructura mínima del prompt:
 
 ```
 Use the Playwright Planner agent to explore [feature] at [URL].
@@ -348,9 +351,9 @@ Reference seed: tests/seed.spec.ts
 Save to: specs/[feature-name].md
 ```
 
-Before sending the plan to the Generator, audit it against the checklist in "Rules for reviewing the Planner's output" above. Reject and revise if any angle is missing or weak.
+Antes de mandar el plan al Generator, audítalo contra el checklist de "Reglas para revisar el output del Planner" arriba. Rechaza y revisa si algún ángulo falta o está flojo.
 
-**3b. Generate** — Convert the plan to executable tests:
+**3b. Generate** — Convierte el plan en tests ejecutables:
 ```
 Use the Playwright Generator agent to create tests from specs/[feature-name].md
 Use tests/seed.spec.ts as the seed test.
@@ -359,127 +362,127 @@ Save to: tests/[feature-name]/
 
 **3c. Run & Heal**:
 ```bash
-# Run new tests
+# Ejecuta los tests nuevos
 npx playwright test tests/[feature-name]/
 
-# If failures, invoke Healer
+# Si hay fallos, invoca al Healer
 # "Use the Playwright Healer agent to fix failing tests in tests/[feature-name]/"
 ```
 
-### Step 4 — Apply QA Methodology
+### Paso 4 — Aplica la metodología de QA
 
-Read `references/qa-methodology.md` and apply relevant test categories based on what changed:
+Lee `references/qa-methodology.md` y aplica las categorías de test relevantes según lo que cambió:
 
-| What changed | Apply these categories |
+| Qué cambió | Aplica estas categorías |
 |-------------|----------------------|
-| New CRUD feature | Functional (Create/Read/Update/Delete), Edge Cases, Consistency |
-| State transitions | State Machine Testing, Automation Testing |
-| API endpoint | Malformed Input, Network Failures, API Testing |
-| Real-time feature | Multi-User Testing, Sync, Data Loss |
-| Any user-facing change | Responsive, Double Submit, Back Button, Session Expiry |
-| Integrations (email, SMS) | Automation Testing, Timing, No Duplicates |
+| Feature CRUD nueva | Funcional (Create/Read/Update/Delete), Edge Cases, Consistencia |
+| Transiciones de estado | Testing de máquina de estados, Testing de automatizaciones |
+| Endpoint de API | Input malformado, Fallos de red, Testing de API |
+| Feature en tiempo real | Testing multi-usuario, Sincronización, Pérdida de datos |
+| Cualquier cambio user-facing | Responsive, Doble Submit, Botón atrás, Expiración de sesión |
+| Integraciones (email, SMS) | Testing de automatizaciones, Timing, Sin duplicados |
 
-### Step 5 — Report Results
+### Paso 5 — Reporta los resultados
 
-Produce the standardized report (see `references/qa-methodology.md` for format):
-- Individual test results with status and severity
-- Top 5 critical bugs
-- Proposed improvements
-- Coverage assessment
-- List of new regression tests added
+Produce el report estandarizado (ver `references/qa-methodology.md` para el formato):
+- Resultados individuales por test con estado y severidad
+- Top 5 bugs críticos
+- Mejoras propuestas
+- Evaluación de cobertura
+- Lista de tests de regresión nuevos añadidos
 
-### Step 6 — Commit Tests to Regression Suite
+### Paso 6 — Commitea los tests a la suite de regresión
 
-New tests that pass become part of the permanent suite, ensuring the feature stays tested on every future change.
-
----
-
-## Workflow: First-Time Setup
-
-If the project doesn't have Playwright yet:
-
-1. Read `references/setup.md`
-2. Install Playwright + browsers
-3. Init agents: `npx playwright init-agents --loop=claude`
-4. Create `playwright.config.ts` adapted to the project
-5. Create auth setup if the app requires login
-6. Create `tests/seed.spec.ts`
-7. Create `specs/` directory
-8. Run the first Planner exploration of the app
+Los tests nuevos que pasen pasan a formar parte de la suite permanente, asegurando que la feature siga testeada en cada cambio futuro.
 
 ---
 
-## Key Principles
+## Workflow: Setup inicial
 
-1. **You are not testing to confirm — you are testing to break.** This is the core mantra. If a test wouldn't catch a real bug, delete it.
-2. **Two modes: SUGGEST (auto, free) and EXECUTE (manual, expensive)** — Behavioral changes auto-load the skill, which appends a one-line QA suggestion. The full workflow only runs when the user explicitly says yes. See the Activation Rules above.
-3. **The 8 angles are the floor, not the ceiling** — A test plan that misses an applicable angle is incomplete by definition.
-4. **Angle 7 is non-negotiable** — Every QA pass includes regression tests against named nearby features. Skipping it is a documented decision, not a default.
-5. **No assumptions** — Validate everything explicitly. "It probably still works" is the sentence right before a production incident.
-6. **Prioritize critical bugs** — Duplicate actions, data loss, inconsistent states, money flows.
-7. **Deterministic tests** — Every test reproducible, no external state dependency.
-8. **Isolation** — Fresh browser context per test (Playwright default).
-9. **Semantic locators** — `getByRole`, `getByLabel`, `getByTestId`. Never fragile CSS.
-10. **No artificial waits** — Trust Playwright's auto-wait + retry assertions.
-11. **Tests are permanent** — Once written, they stay in the regression suite forever.
-12. **Generic patterns** — Apply the same methodology regardless of app domain.
+Si el proyecto todavía no tiene Playwright:
+
+1. Lee `references/setup.md`
+2. Instala Playwright + browsers
+3. Inicializa los agentes: `npx playwright init-agents --loop=claude`
+4. Crea `playwright.config.ts` adaptado al proyecto
+5. Crea el setup de auth si la app requiere login
+6. Crea `tests/seed.spec.ts`
+7. Crea el directorio `specs/`
+8. Ejecuta la primera exploración del Planner sobre la app
 
 ---
 
-## Project Structure
+## Principios Clave
+
+1. **No estás testeando para confirmar — estás testeando para romper.** Este es el mantra central. Si un test no cazaría un bug real, bórralo.
+2. **Dos modos: SUGGEST (auto, gratis) y EXECUTE (manual, caro)** — Los cambios behaviorales auto-cargan la skill, que añade una línea de sugerencia de QA. El workflow completo solo corre cuando el usuario dice sí explícitamente. Ver las Reglas de Activación arriba.
+3. **Los 8 ángulos son el suelo, no el techo** — Un plan de test que omite un ángulo aplicable está incompleto por definición.
+4. **El Ángulo 7 es no negociable** — Cada pase de QA incluye tests de regresión contra features cercanas nombradas. Saltarlo es una decisión documentada, no un default.
+5. **Sin asunciones** — Valida todo explícitamente. "Probablemente sigue funcionando" es la frase que va justo antes de un incidente en producción.
+6. **Prioriza bugs críticos** — Acciones duplicadas, pérdida de datos, estados inconsistentes, flujos de dinero.
+7. **Tests deterministas** — Cada test reproducible, sin dependencia de estado externo.
+8. **Aislamiento** — Contexto de browser fresco por test (default de Playwright).
+9. **Locators semánticos** — `getByRole`, `getByLabel`, `getByTestId`. Nunca CSS frágil.
+10. **Sin waits artificiales** — Confía en el auto-wait + retry assertions de Playwright.
+11. **Los tests son permanentes** — Una vez escritos, se quedan en la suite de regresión para siempre.
+12. **Patrones genéricos** — Aplica la misma metodología independientemente del dominio de la app.
+
+---
+
+## Estructura del proyecto
 
 ```
 project/
-├── .github/                    # Agent definitions (auto-generated)
-├── specs/                      # Test plans (Markdown, by feature)
+├── .github/                    # Definiciones de agentes (auto-generadas)
+├── specs/                      # Planes de test (Markdown, por feature)
 │   ├── auth-flow.md
 │   ├── entity-crud.md
 │   ├── dashboard.md
 │   └── integrations.md
 ├── tests/
-│   ├── fixtures.ts             # Custom fixtures (auth, data setup)
-│   ├── seed.spec.ts            # Seed test for agent bootstrap
-│   ├── auth.setup.ts           # Authentication setup
-│   ├── auth/                   # Tests by feature area
+│   ├── fixtures.ts             # Fixtures custom (auth, setup de datos)
+│   ├── seed.spec.ts            # Seed test para bootstrap de los agentes
+│   ├── auth.setup.ts           # Setup de autenticación
+│   ├── auth/                   # Tests por área de feature
 │   ├── entity-crud/
 │   ├── dashboard/
 │   ├── integrations/
 │   ├── edge-cases/
 │   └── helpers/
-│       └── test-data.ts        # Test data generators
+│       └── test-data.ts        # Generadores de datos de test
 ├── playwright.config.ts
-└── test-results/               # Traces, screenshots, videos
+└── test-results/               # Traces, screenshots, vídeos
 ```
 
 ---
 
 ## Troubleshooting
 
-| Problem | Solution |
+| Problema | Solución |
 |---------|----------|
-| Agents stall at login | Add auth to `seed.spec.ts` or use `storageState` in fixtures |
-| Flaky tests | Check timing → use `expect().toBeVisible()` not `waitForTimeout` |
-| Large accessibility trees | Save snapshots locally, don't stream into every prompt |
-| Context window overflow | Use "Code Mode" — agent writes code that calls tools |
-| Server-side crashes | Add health check assertions before interaction steps |
-| Tests pass locally, fail in CI | Check env vars, base URL, and browser deps |
+| Los agentes se atascan en el login | Añade auth a `seed.spec.ts` o usa `storageState` en fixtures |
+| Tests flaky | Revisa el timing → usa `expect().toBeVisible()` no `waitForTimeout` |
+| Accessibility trees enormes | Guarda los snapshots localmente, no los inyectes en cada prompt |
+| Context window se desborda | Usa "Code Mode" — el agente escribe código que llama a las herramientas |
+| Crashes del lado servidor | Añade aserciones de health check antes de los pasos de interacción |
+| Tests pasan en local, fallan en CI | Revisa env vars, base URL y dependencias del browser |
 
 ---
 
-## Anti-Patterns
+## Anti-patrones
 
-- **Vague Planner prompts** — "Test the feature" / "verify it works" / "comprehensive test plan". Always paste the 8 angles inline with concrete attack examples. See "Writing Instructions for the Planner Agent".
-- **Render-checking instead of break-testing** — A test that only verifies the page loads is a smoke test, not QA. If your tests don't try to break anything, you didn't QA.
-- **Skipping Angle 7** — Shipping QA without regression tests against named nearby features. The bug you missed is almost always next to the change, not in it.
-- **Happy-path-majority test plans** — If most of your tests fill valid data and click submit, you're testing the demo, not the product. Adversarial tests should outnumber happy paths.
-- **Trusting the Planner blindly** — Always audit the plan against the 8 angles before sending it to the Generator. The agent will produce a thin plan if you let it.
-- **`page.waitForTimeout()`** — Never. Use auto-wait + assertions.
-- **CSS selectors** — Use semantic locators (`getByRole`, `getByTestId`).
-- **Shared state between tests** — Each test gets fresh browser context.
-- **Testing everything with agents** — Keep stable tests as static specs; use agents for new features and flaky areas.
-- **Ignoring traces** — Always review trace viewer for failures.
-- **Running EXECUTE mode without explicit consent** — Suggesting is free, executing is expensive. Never run the full Planner → Generator → Healer workflow unless the user explicitly says so. Acceptable greenlights: "haz QA", "sí", "dale", "yes", "go", or any phrase from the EXECUTE trigger list.
-- **Reading reference files in SUGGEST mode** — `qa-methodology.md`, `setup.md`, `spec-template.md`, `example-qa-report.md` are EXECUTE-mode resources. Loading them in SUGGEST mode wastes context for nothing.
-- **Adding the suggestion line to non-behavioral changes** — Pure docs, comments, styling, config tweaks, conversation. No suggestion line. Only append it when there's a real behavioral change worth testing.
-- **Repeating the suggestion after the user already declined** — Ask once per conversation. Respect the answer.
-- **Not committing tests** — Every passing test goes to the regression suite.
+- **Prompts vagos al Planner** — "Test the feature" / "verify it works" / "comprehensive test plan". Pega siempre los 8 ángulos inline con ejemplos de ataque concretos. Ver "Cómo escribir instrucciones para el Planner".
+- **Comprobar renderizado en vez de break-testing** — Un test que solo verifica que la página carga es un smoke test, no QA. Si tus tests no intentan romper nada, no hiciste QA.
+- **Saltarse el Ángulo 7** — Entregar QA sin tests de regresión contra features cercanas nombradas. El bug que se te escapó casi siempre está al lado del cambio, no en él.
+- **Planes de test mayoritariamente happy path** — Si la mayoría de tus tests rellenan datos válidos y hacen click en submit, estás testeando la demo, no el producto. Los tests adversariales deberían ser más numerosos que los happy paths.
+- **Confiar ciegamente en el Planner** — Audita siempre el plan contra los 8 ángulos antes de mandarlo al Generator. El agente producirá un plan flojo si le dejas.
+- **`page.waitForTimeout()`** — Nunca. Usa auto-wait + aserciones.
+- **Selectores CSS** — Usa locators semánticos (`getByRole`, `getByTestId`).
+- **Estado compartido entre tests** — Cada test recibe un contexto de browser fresco.
+- **Testear todo con agentes** — Mantén los tests estables como specs estáticos; usa los agentes para features nuevas y áreas flaky.
+- **Ignorar los traces** — Revisa siempre el trace viewer en los fallos.
+- **Ejecutar el modo EXECUTE sin consentimiento explícito** — Sugerir es gratis, ejecutar es caro. Nunca ejecutes el workflow completo Planner → Generator → Healer salvo que el usuario lo diga explícitamente. Luces verdes aceptables: "haz QA", "sí", "dale", "yes", "go", o cualquier frase de la lista de disparadores de EXECUTE.
+- **Leer archivos de referencia en modo SUGGEST** — `qa-methodology.md`, `setup.md`, `spec-template.md`, `example-qa-report.md` son recursos del modo EXECUTE. Cargarlos en modo SUGGEST gasta contexto para nada.
+- **Añadir la línea de sugerencia a cambios no behaviorales** — Docs puras, comentarios, estilos, ajustes de config, conversación. Sin línea de sugerencia. Solo añádela cuando hay un cambio behavioral real que merezca ser testeado.
+- **Repetir la sugerencia después de que el usuario ya rechazó** — Pregunta una vez por conversación. Respeta la respuesta.
+- **No commitear los tests** — Cada test que pasa va a la suite de regresión.

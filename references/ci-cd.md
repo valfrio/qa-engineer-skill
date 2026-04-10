@@ -1,31 +1,33 @@
-# CI/CD Integration — Post-Deploy QA Workflow
+# Integración CI/CD — Workflow de QA Post-Deploy
 
-## Overview
+## Visión general
 
-This reference covers how to integrate Playwright QA agents into your CI/CD pipeline to run automatically after each deploy.
+Esta referencia cubre cómo integrar los Playwright QA agents en tu pipeline CI/CD para que se ejecuten automáticamente después de cada deploy.
+
+> **Nota:** CI/CD es **opcional**. La mayoría de equipos ejecutan los tests en local contra el servidor desplegado, sin pipeline. Ver la sección "Ejecutar tests en local contra un servidor remoto" en el `README.md` raíz. Esta referencia es para los equipos que sí quieran un pipeline.
 
 ---
 
-## GitHub Actions Workflow
+## Workflow de GitHub Actions
 
-### Basic: Run Tests After Deploy
+### Básico: Ejecutar Tests Después del Deploy
 
 ```yaml
 # .github/workflows/qa-post-deploy.yml
 name: QA — Post-Deploy E2E Tests
 
 on:
-  # Trigger after deploy workflow completes
+  # Disparar después de que el workflow de deploy complete
   workflow_run:
     workflows: ["Deploy"]
     types: [completed]
     branches: [main, staging]
   
-  # Or trigger manually
+  # O disparar manualmente
   workflow_dispatch:
     inputs:
       base_url:
-        description: 'URL to test against'
+        description: 'URL contra la que testear'
         required: false
         default: 'https://staging.tuapp.com'
 
@@ -38,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     
-    # Only run if deploy was successful
+    # Solo ejecutar si el deploy fue exitoso
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     
     steps:
@@ -49,20 +51,20 @@ jobs:
           node-version: 20
           cache: 'npm'
       
-      - name: Install dependencies
+      - name: Instalar dependencias
         run: npm ci
       
-      - name: Install Playwright Browsers
+      - name: Instalar Playwright Browsers
         run: npx playwright install --with-deps chromium
       
-      - name: Run Playwright Tests
+      - name: Ejecutar Playwright Tests
         run: npx playwright test
         env:
           BASE_URL: ${{ env.BASE_URL }}
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
       
-      - name: Upload Test Report
+      - name: Subir Test Report
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -70,7 +72,7 @@ jobs:
           path: playwright-report/
           retention-days: 30
       
-      - name: Upload Test Results
+      - name: Subir Test Results
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -79,7 +81,7 @@ jobs:
           retention-days: 14
 ```
 
-### Advanced: Planner + Generator + Healer Loop in CI
+### Avanzado: Loop Planner + Generator + Healer en CI
 
 ```yaml
 # .github/workflows/qa-agents-loop.yml
@@ -89,10 +91,10 @@ on:
   workflow_dispatch:
     inputs:
       feature_area:
-        description: 'Feature area to test (e.g., checkout, auth, dashboard)'
+        description: 'Área de feature a testear (ej: checkout, auth, dashboard)'
         required: true
       base_url:
-        description: 'URL to test against'
+        description: 'URL contra la que testear'
         required: false
         default: 'https://staging.tuapp.com'
 
@@ -110,20 +112,20 @@ jobs:
           node-version: 20
           cache: 'npm'
       
-      - name: Install dependencies
+      - name: Instalar dependencias
         run: |
           npm ci
           npx playwright install --with-deps chromium
       
-      # Run existing tests first (regression)
-      - name: Run Regression Suite
+      # Ejecutar tests existentes primero (regresión)
+      - name: Ejecutar Suite de Regresión
         run: npx playwright test
         env:
           BASE_URL: ${{ github.event.inputs.base_url }}
         continue-on-error: true
       
-      # Generate new tests with agents if specs exist
-      - name: Check for specs
+      # Generar tests nuevos con agentes si existen specs
+      - name: Comprobar specs
         id: check-specs
         run: |
           if [ -d "specs" ] && [ "$(ls -A specs/ 2>/dev/null)" ]; then
@@ -132,13 +134,13 @@ jobs:
             echo "has_specs=false" >> $GITHUB_OUTPUT
           fi
       
-      # Run full test suite
-      - name: Run Full E2E Suite
+      # Ejecutar la suite completa de tests
+      - name: Ejecutar Suite E2E Completa
         run: npx playwright test --reporter=json,html
         env:
           BASE_URL: ${{ github.event.inputs.base_url }}
       
-      - name: Upload Reports
+      - name: Subir Reports
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -152,9 +154,9 @@ jobs:
 
 ---
 
-## Post-Deploy Script (Local / Staging)
+## Script Post-Deploy (Local / Staging)
 
-Script to run the full QA loop locally or on staging:
+Script para ejecutar el loop completo de QA en local o contra staging:
 
 ```bash
 #!/bin/bash
@@ -165,35 +167,35 @@ set -e
 BASE_URL=${1:-"http://localhost:3000"}
 FEATURE=${2:-"all"}
 
-echo "🧪 Running QA against: $BASE_URL"
+echo "🧪 Ejecutando QA contra: $BASE_URL"
 echo "📋 Feature scope: $FEATURE"
 
-# 1. Run regression suite
-echo "━━━ Phase 1: Regression Suite ━━━"
+# 1. Ejecutar suite de regresión
+echo "━━━ Fase 1: Suite de Regresión ━━━"
 BASE_URL=$BASE_URL npx playwright test --reporter=list 2>&1 || true
 
-# 2. Check for new/updated specs
-echo "━━━ Phase 2: Check Specs ━━━"
+# 2. Comprobar specs nuevos/actualizados
+echo "━━━ Fase 2: Comprobar Specs ━━━"
 if [ -d "specs" ] && [ "$(ls -A specs/)" ]; then
-  echo "Found specs, generating tests..."
-  # Agents will be invoked by Claude Code
+  echo "Specs encontrados, generando tests..."
+  # Los agentes serán invocados por Claude Code
 else
-  echo "No specs found. Run Planner agent first."
+  echo "No hay specs. Ejecuta el agente Planner primero."
 fi
 
-# 3. Run full suite with traces
-echo "━━━ Phase 3: Full E2E Suite ━━━"
+# 3. Ejecutar suite completa con traces
+echo "━━━ Fase 3: Suite E2E Completa ━━━"
 BASE_URL=$BASE_URL npx playwright test \
   --reporter=html,json \
   --trace=on \
   2>&1 || true
 
-# 4. Generate report
-echo "━━━ Phase 4: Report ━━━"
+# 4. Generar report
+echo "━━━ Fase 4: Report ━━━"
 echo "📊 Report: playwright-report/index.html"
 echo "🔍 Traces: test-results/"
 
-# 5. Summary
+# 5. Resumen
 TOTAL=$(cat test-results/results.json 2>/dev/null | jq '.stats.expected + .stats.unexpected + .stats.skipped' || echo "0")
 PASSED=$(cat test-results/results.json 2>/dev/null | jq '.stats.expected' || echo "0")
 FAILED=$(cat test-results/results.json 2>/dev/null | jq '.stats.unexpected' || echo "0")
@@ -204,9 +206,9 @@ echo "Total: $TOTAL | ✅ $PASSED | ❌ $FAILED"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 ```
 
-Make executable: `chmod +x scripts/run-qa.sh`
+Hazlo ejecutable: `chmod +x scripts/run-qa.sh`
 
-Usage:
+Uso:
 ```bash
 # Local
 ./scripts/run-qa.sh http://localhost:3000
@@ -214,19 +216,19 @@ Usage:
 # Staging
 ./scripts/run-qa.sh https://staging.tuapp.com
 
-# Specific feature
+# Feature específica
 ./scripts/run-qa.sh https://staging.tuapp.com checkout
 ```
 
 ---
 
-## Workflow: After New Implementation
+## Workflow: Después de una Implementación Nueva
 
-When a new feature is implemented, this is the Claude-driven workflow:
+Cuando se implementa una feature nueva, este es el workflow orquestado por Claude:
 
-### Step 1: Generate Spec (Planner)
+### Paso 1: Generar Spec (Planner)
 
-Prompt the Planner agent:
+Prompt al agente Planner:
 ```
 Use the Playwright Planner agent to explore [feature] at [URL]
 and generate a comprehensive test plan covering:
@@ -238,32 +240,32 @@ and generate a comprehensive test plan covering:
 Save the plan to specs/[feature].md
 ```
 
-### Step 2: Generate Tests (Generator)
+### Paso 2: Generar Tests (Generator)
 
-Prompt the Generator agent:
+Prompt al agente Generator:
 ```
 Use the Playwright Generator agent to create tests from 
 specs/[feature].md. Use tests/seed.spec.ts as the seed test.
 Save generated tests to tests/[feature]/
 ```
 
-### Step 3: Run & Heal
+### Paso 3: Run & Heal
 
 ```bash
-# Run the new tests
+# Ejecuta los tests nuevos
 npx playwright test tests/[feature]/
 
-# If failures, invoke Healer:
+# Si hay fallos, invoca al Healer:
 # "Use the Playwright Healer agent to fix failing tests in tests/[feature]/"
 ```
 
-### Step 4: Add to Regression Suite
+### Paso 4: Añadir a la Suite de Regresión
 
-Once tests pass, they become part of the permanent regression suite that runs on every deploy.
+Una vez que los tests pasen, pasan a formar parte de la suite de regresión permanente que corre en cada deploy.
 
 ---
 
-## Docker Configuration (for CI)
+## Configuración de Docker (para CI)
 
 ```dockerfile
 # Dockerfile.qa
@@ -298,20 +300,20 @@ services:
 
 ---
 
-## Notifications (Optional)
+## Notificaciones (Opcional)
 
-### Slack Notification on Failure
+### Notificación a Slack en Fallo
 
-Add to GitHub Actions workflow:
+Añade al workflow de GitHub Actions:
 
 ```yaml
-- name: Notify Slack on Failure
+- name: Notificar a Slack en Fallo
   if: failure()
   uses: 8398a7/action-slack@v3
   with:
     status: failure
     text: |
-      🔴 QA Tests Failed after deploy
+      🔴 QA Tests Fallidos tras el deploy
       Branch: ${{ github.ref_name }}
       Report: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     webhook_url: ${{ secrets.SLACK_WEBHOOK }}
@@ -319,9 +321,9 @@ Add to GitHub Actions workflow:
 
 ---
 
-## Environment Management
+## Gestión de Entornos
 
-### Test Data Strategy
+### Estrategia de Datos de Test
 
 ```typescript
 // tests/helpers/test-data.ts
@@ -353,7 +355,7 @@ export function getFutureDate(days: number): string {
 }
 ```
 
-### Cleanup After Tests
+### Cleanup Después de Tests
 
 ```typescript
 // tests/global-teardown.ts
@@ -364,7 +366,7 @@ export default async function globalTeardown() {
     baseURL: process.env.BASE_URL,
   });
   
-  // Clean up test data
+  // Limpiar datos de test
   await api.delete('/api/test/cleanup', {
     headers: { Authorization: `Bearer ${process.env.API_KEY}` },
   });
@@ -373,7 +375,7 @@ export default async function globalTeardown() {
 }
 ```
 
-Add to `playwright.config.ts`:
+Añade a `playwright.config.ts`:
 ```typescript
 export default defineConfig({
   globalTeardown: './tests/global-teardown.ts',
@@ -383,9 +385,9 @@ export default defineConfig({
 
 ---
 
-## Monitoring Test Health
+## Monitorizar la Salud de los Tests
 
-### Track Flaky Tests
+### Detectar Tests Flaky
 
 ```typescript
 // playwright.config.ts
@@ -394,16 +396,16 @@ export default defineConfig({
   reporter: [
     ['html'],
     ['json', { outputFile: 'test-results/results.json' }],
-    // Track flaky tests over time
+    // Detectar tests flaky a lo largo del tiempo
     ['list', { printSteps: true }],
   ],
 });
 ```
 
-### Dashboard Integration
+### Integración con Dashboard
 
-Export test results JSON and feed into your monitoring dashboard. Key metrics:
-- Pass rate per feature area
-- Flaky test rate (passed on retry)
-- Test execution time trends
-- Coverage gaps (untested features)
+Exporta los resultados de tests como JSON y aliméntalos a tu dashboard de monitorización. Métricas clave:
+- Pass rate por área de feature
+- Tasa de tests flaky (pasaron en retry)
+- Tendencias de tiempo de ejecución de los tests
+- Huecos de cobertura (features sin testear)

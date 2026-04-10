@@ -1,207 +1,207 @@
-# QA Methodology Reference — Exhaustive E2E Testing (Generic)
+# Referencia de Metodología de QA — Testing E2E Exhaustivo (Genérico)
 
-## Testing Philosophy
+## Filosofía de Testing
 
-> **"You are not testing to confirm features work — you are testing to break them."**
+> **"No estás testeando para confirmar que las features funcionan — estás testeando para romperlas."**
 > **"Si no lo has validado intentando romperlo, no funciona."**
 
 Actúa como un QA Engineer senior con mentalidad de "romper el sistema". No asumas que nada funciona hasta haberlo verificado. Prioriza bugs críticos: pérdida de datos, estados inconsistentes, acciones duplicadas, y fallos de seguridad.
 
 ---
 
-## How This Document Relates to the 8 Adversarial Angles
+## Cómo este documento se relaciona con los 8 Ángulos Adversariales
 
-`SKILL.md` defines **8 adversarial angles** (the *vectors of attack*). This methodology document defines **7 functional test categories** (the *domains to attack*). They are orthogonal — both must be applied:
+`SKILL.md` define **8 ángulos adversariales** (los *vectores de ataque*). Este documento de metodología define **7 categorías funcionales de test** (los *dominios a atacar*). Son ortogonales — los dos hay que aplicarlos:
 
-| | **Functional Categories (this doc)** | **Adversarial Angles (SKILL.md)** |
+| | **Categorías Funcionales (este doc)** | **Ángulos Adversariales (SKILL.md)** |
 |---|---|---|
-| **Question they answer** | *What domain of behavior do I need to test?* | *How do I attack each domain?* |
-| **Examples** | CRUD, State Machines, Automation, Real-Time, Edge Cases, Consistency, Responsive | Empty inputs, invalid data, boundary values, injection, double-click, navigation, regression in nearby features, auth |
-| **Granularity** | One per functional area of the app | One per attack vector applied to *each* functional area |
-| **Where to start** | Map the app: which categories apply? | For each applicable category, run all 8 angles |
+| **Pregunta que responden** | *¿Qué dominio de comportamiento necesito testear?* | *¿Cómo ataco cada dominio?* |
+| **Ejemplos** | CRUD, Máquinas de Estado, Automation, Real-Time, Edge Cases, Consistencia, Responsive | Inputs vacíos, datos inválidos, valores límite, inyección, doble click, navegación, regresión en features cercanas, auth |
+| **Granularidad** | Una por área funcional de la app | Una por vector de ataque aplicado a *cada* área funcional |
+| **Por dónde empezar** | Mapea la app: ¿qué categorías aplican? | Para cada categoría aplicable, ejecuta los 8 ángulos |
 
-### How to use both together
+### Cómo usar ambos juntos
 
-1. **Map the feature to functional categories.** Is it CRUD? Does it have state transitions? Does it trigger automations? Each Yes opens a category from this document.
-2. **For each opened category, run the 8 angles from `SKILL.md`.** A CRUD form must be tested with empty inputs, invalid data, boundary values, injection, double-click, navigation edges, regression in nearby features, and auth edges. Same for a state transition. Same for an automation.
-3. **Use this document for the patterns and code samples.** When you need to write a "concurrent access" test or a "scheduled task" test, the canonical patterns are below. The *adversarial framing* of those patterns comes from the angles.
+1. **Mapea la feature a categorías funcionales.** ¿Es CRUD? ¿Tiene transiciones de estado? ¿Dispara automatizaciones? Cada Sí abre una categoría de este documento.
+2. **Para cada categoría abierta, ejecuta los 8 ángulos de `SKILL.md`.** Un formulario CRUD debe testearse con inputs vacíos, datos inválidos, valores límite, inyección, doble click, edges de navegación, regresión en features cercanas y edges de auth. Lo mismo para una transición de estado. Lo mismo para una automatización.
+3. **Usa este documento para los patrones y ejemplos de código.** Cuando necesites escribir un test de "acceso concurrente" o un test de "tarea programada", los patrones canónicos están abajo. El *framing adversarial* de esos patrones viene de los ángulos.
 
-### Quick mapping: which angles apply to which categories
+### Mapeo rápido: qué ángulos aplican a qué categorías
 
-| Functional Category ↓  /  Angle → | 1 Empty | 2 Invalid | 3 Boundary | 4 Injection | 5 Double-click | 6 Navigation | 7 Nearby | 8 Auth |
+| Categoría Funcional ↓  /  Ángulo → | 1 Vacío | 2 Inválido | 3 Límite | 4 Inyección | 5 Doble-click | 6 Navegación | 7 Cercano | 8 Auth |
 |---|---|---|---|---|---|---|---|---|
 | 1. CRUD                    | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 2. State Machine           | ⚠️ | ✅ | — | — | ✅ | ✅ | ✅ | ✅ |
-| 3. Automation/Integration  | — | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ |
-| 4. Real-Time/Multi-User    | — | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ |
+| 2. Máquina de Estados      | ⚠️ | ✅ | — | — | ✅ | ✅ | ✅ | ✅ |
+| 3. Automation/Integración  | — | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ |
+| 4. Real-Time/Multi-Usuario | — | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ |
 | 5. Edge Cases              | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 6. Consistency             | — | — | — | — | ✅ | ✅ | ✅ | — |
+| 6. Consistencia            | — | — | — | — | ✅ | ✅ | ✅ | — |
 | 7. Responsive/A11y         | — | — | ✅ | — | — | ✅ | — | — |
 
-✅ = mandatory  ⚠️ = situational  — = not usually applicable
+✅ = obligatorio  ⚠️ = situacional  — = normalmente no aplicable
 
-> **TL;DR:** the angles tell you *what to break*. The categories tell you *what kinds of things exist that can be broken*. Apply both, every time.
-
----
-
-## How To Apply This Methodology
-
-This is a **generic framework**. When testing a specific app, Claude must:
-
-1. **Identify the app's domain** — What does it do? (e-commerce, SaaS, booking, CMS, dashboard...)
-2. **Map the entities** — What are the core objects? (users, orders, posts, tickets, messages...)
-3. **Map the operations** — What can be done with each entity? (CRUD, state transitions, automations...)
-4. **Map the integrations** — What external systems are involved? (email, SMS, payments, APIs, webhooks...)
-5. **Apply each test category below** to the mapped entities and operations
+> **TL;DR:** los ángulos te dicen *qué romper*. Las categorías te dicen *qué tipos de cosas existen que puedan romperse*. Aplica los dos, siempre.
 
 ---
 
-## Test Categories
+## Cómo Aplicar Esta Metodología
 
-### 1. FUNCTIONAL TESTING — CRUD & Core Flows
+Esto es un **framework genérico**. Cuando testee una app específica, Claude debe:
 
-For **every entity** in the application, test all operations:
+1. **Identificar el dominio de la app** — ¿Qué hace? (e-commerce, SaaS, booking, CMS, dashboard...)
+2. **Mapear las entidades** — ¿Cuáles son los objetos núcleo? (users, orders, posts, tickets, messages...)
+3. **Mapear las operaciones** — ¿Qué puede hacerse con cada entidad? (CRUD, transiciones de estado, automatizaciones...)
+4. **Mapear las integraciones** — ¿Qué sistemas externos están involucrados? (email, SMS, pagos, APIs, webhooks...)
+5. **Aplicar cada categoría de test de abajo** a las entidades y operaciones mapeadas
+
+---
+
+## Categorías de Test
+
+### 1. TESTING FUNCIONAL — CRUD y Flujos Núcleo
+
+Para **cada entidad** en la aplicación, testea todas las operaciones:
 
 #### Create — Happy Path
 ```typescript
 test('create [entity] with valid data', async ({ page }) => {
-  // Navigate to creation form
-  // Fill all required fields with valid data
+  // Navega al formulario de creación
+  // Rellena todos los campos obligatorios con datos válidos
   // Submit
-  // Assert: success message, entity appears in list, correct data displayed
+  // Assert: mensaje de éxito, la entidad aparece en la lista, datos correctos mostrados
 });
 ```
 
-#### Create — Invalid & Edge Cases
-Test each of these scenarios per create form:
+#### Create — Inválido y Edge Cases
+Testea cada uno de estos escenarios por formulario de creación:
 
-| Scenario | What to test | Expected |
+| Escenario | Qué testear | Esperado |
 |----------|-------------|----------|
-| Empty required fields | Submit with nothing filled | Validation errors on each field |
-| Invalid format | Wrong email, phone, URL, date formats | Field-specific error messages |
-| Boundary values | Min/max lengths, 0, -1, 999999, empty string | Graceful rejection or acceptance |
-| Extreme strings | 10K+ chars, only spaces, only special chars | Truncation or validation error |
-| Injection | `<script>alert(1)</script>`, `'; DROP TABLE--` | Sanitized, no execution |
-| Unicode & emoji | Names with ñ, ü, 日本語, 🎉 | Stored and displayed correctly |
-| Duplicate | Create same entity twice | Error or deduplicate, never silent duplicate |
-| Past dates | If date field exists, try dates in the past | Reject if not allowed |
-| Future extremes | Year 2099, year 1900 | Reject or handle gracefully |
+| Campos obligatorios vacíos | Submit sin nada relleno | Errores de validación en cada campo |
+| Formato inválido | Email, teléfono, URL, fechas mal formados | Mensajes de error específicos por campo |
+| Valores límite | Min/max lengths, 0, -1, 999999, string vacío | Rechazo o aceptación de forma controlada |
+| Strings extremos | 10K+ chars, solo espacios, solo chars especiales | Truncado o error de validación |
+| Inyección | `<script>alert(1)</script>`, `'; DROP TABLE--` | Sanitizado, sin ejecutar |
+| Unicode y emoji | Nombres con ñ, ü, 日本語, 🎉 | Almacenados y mostrados correctamente |
+| Duplicado | Crear la misma entidad dos veces | Error o deduplicar, nunca duplicado en silencio |
+| Fechas pasadas | Si hay campo de fecha, prueba fechas en el pasado | Rechazar si no está permitido |
+| Extremos futuros | Año 2099, año 1900 | Rechazar o manejar con elegancia |
 
 #### Read / List
 ```typescript
 test('list [entities] with pagination', async ({ page }) => {
-  // Navigate to list view
-  // Assert: items visible, count matches
-  // Test pagination: next, previous, jump to page
-  // Test sorting: by each sortable column
-  // Test filtering: by each available filter
-  // Test search: exact match, partial match, no results
+  // Navega a la vista de lista
+  // Assert: items visibles, count coincide
+  // Testea paginación: next, previous, jump to page
+  // Testea sorting: por cada columna ordenable
+  // Testea filtering: por cada filtro disponible
+  // Testea search: match exacto, match parcial, sin resultados
 });
 ```
 
 #### Update
-| Scenario | Expected |
+| Escenario | Esperado |
 |----------|----------|
-| Valid single field change | Updated, confirmation shown |
-| Valid multi-field change | All fields updated atomically |
-| Change to conflicting value | Error (e.g., duplicate email, occupied slot) |
-| Update deleted/archived entity | Blocked or error |
-| Update entity in terminal state | Blocked (e.g., can't edit "completed" order) |
-| Concurrent update by 2 users | Last-write-wins or conflict resolution |
+| Cambio válido de un solo campo | Actualizado, confirmación mostrada |
+| Cambio válido multi-campo | Todos los campos actualizados atómicamente |
+| Cambio a un valor en conflicto | Error (ej: email duplicado, slot ocupado) |
+| Update de entidad borrada/archivada | Bloqueado o error |
+| Update de entidad en estado terminal | Bloqueado (ej: no se puede editar un order "completed") |
+| Update concurrente por 2 usuarios | Last-write-wins o resolución de conflictos |
 
 #### Delete / Archive
-| Scenario | Expected |
+| Escenario | Esperado |
 |----------|----------|
-| Delete active entity | Removed from list, confirmation prompt |
-| Delete already deleted entity | Idempotent or 404 |
-| Delete entity with dependencies | Cascade or block with explanation |
-| Double-click delete button | Only one deletion, not error |
-| Soft delete vs hard delete | Verify which applies, check recovery option |
+| Delete de entidad activa | Quitada de la lista, prompt de confirmación |
+| Delete de entidad ya borrada | Idempotente o 404 |
+| Delete de entidad con dependencias | Cascade o bloqueo con explicación |
+| Doble click en botón delete | Solo una eliminación, no error |
+| Soft delete vs hard delete | Verifica cuál aplica, comprueba opción de recuperación |
 
 ---
 
-### 2. STATE MACHINE TESTING
+### 2. TESTING DE MÁQUINA DE ESTADOS
 
-Most entities have states (pending → confirmed → completed → cancelled, etc). For every state transition:
+La mayoría de entidades tienen estados (pending → confirmed → completed → cancelled, etc). Para cada transición de estado:
 
 ```
-For each [current_state] → [target_state]:
-  ✅ Test: valid transition succeeds
-  ❌ Test: invalid transition is blocked
-  🔄 Test: side effects fire correctly (emails, webhooks, UI updates)
-  ⏱️ Test: timestamps update correctly
+Para cada [estado_actual] → [estado_objetivo]:
+  ✅ Test: la transición válida funciona
+  ❌ Test: la transición inválida está bloqueada
+  🔄 Test: los efectos secundarios se disparan correctamente (emails, webhooks, updates de UI)
+  ⏱️ Test: los timestamps se actualizan correctamente
 ```
 
-Example pattern:
+Patrón de ejemplo:
 ```typescript
 test('transition [entity] from [state_A] to [state_B]', async ({ page }) => {
-  // Setup: create entity in state_A
-  // Action: trigger transition (button click, API call, etc)
-  // Assert: state is now state_B
-  // Assert: UI reflects new state
-  // Assert: side effects fired (notifications, logs, etc)
-  // Assert: cannot transition backwards to state_A (if irreversible)
+  // Setup: crea entidad en state_A
+  // Action: dispara la transición (button click, API call, etc)
+  // Assert: el estado ahora es state_B
+  // Assert: la UI refleja el nuevo estado
+  // Assert: efectos secundarios disparados (notificaciones, logs, etc)
+  // Assert: no se puede volver a state_A (si es irreversible)
 });
 ```
 
-**Critical checks:**
-- Draw the full state diagram for each entity
-- Every arrow is a test case (valid transition)
-- Every missing arrow is a test case (invalid transition must be blocked)
-- Every state should have at least one exit path (no dead states)
+**Comprobaciones críticas:**
+- Dibuja el diagrama completo de estados de cada entidad
+- Cada flecha es un test case (transición válida)
+- Cada flecha que falta es un test case (la transición inválida debe estar bloqueada)
+- Cada estado debe tener al menos un camino de salida (sin estados muertos)
 
 ---
 
-### 3. AUTOMATION & INTEGRATION TESTING
+### 3. TESTING DE AUTOMATION E INTEGRACIÓN
 
-For every automated side effect in the system (emails, SMS, webhooks, notifications, scheduled tasks):
+Para cada efecto secundario automatizado en el sistema (emails, SMS, webhooks, notificaciones, tareas programadas):
 
-| Check | How |
+| Comprobación | Cómo |
 |-------|-----|
-| Triggers on correct event | Create the event → verify automation fired |
-| Does NOT trigger on wrong event | Create similar-but-different event → verify NO automation |
-| Content is correct | Verify the payload/body contains current data, not stale |
-| No duplicates | Trigger event once → verify exactly 1 automation, not 2+ |
-| Retry on failure | Simulate integration failure → verify retry mechanism |
-| Timing is correct | If delayed (e.g., "send 24h before"), verify exact timing |
-| Cancellation stops pending automations | Cancel entity → verify scheduled automations are cancelled |
-| Update reflects in pending automations | Modify entity → verify pending automations use NEW data |
+| Se dispara en el evento correcto | Crea el evento → verifica que la automatización se disparó |
+| NO se dispara en el evento equivocado | Crea un evento similar pero distinto → verifica que NO hay automatización |
+| El contenido es correcto | Verifica que el payload/body contiene datos actuales, no stale |
+| Sin duplicados | Dispara el evento una vez → verifica exactamente 1 automatización, no 2+ |
+| Retry en fallo | Simula fallo de integración → verifica el mecanismo de retry |
+| El timing es correcto | Si es delayed (ej: "send 24h before"), verifica el timing exacto |
+| Cancelación detiene automatizaciones pendientes | Cancela la entidad → verifica que las automatizaciones programadas están canceladas |
+| Update se refleja en automatizaciones pendientes | Modifica la entidad → verifica que las automatizaciones pendientes usan los datos NUEVOS |
 
-#### Pattern: Testing Automated Communications
+#### Patrón: Testing de Comunicaciones Automatizadas
 ```typescript
 test('automation fires on [event] with correct content', async ({ page, request }) => {
-  // 1. Perform action that triggers automation (via UI or API)
-  // 2. Wait for automation to process
-  // 3. Query test endpoint / mailbox / log to verify:
-  //    - Exactly 1 message sent (not 0, not 2+)
-  //    - Recipient is correct
-  //    - Content reflects current entity data
-  //    - Template rendered (no raw {{variables}})
+  // 1. Realiza la acción que dispara la automatización (vía UI o API)
+  // 2. Espera a que la automatización se procese
+  // 3. Consulta el endpoint de test / mailbox / log para verificar:
+  //    - Exactamente 1 mensaje enviado (no 0, no 2+)
+  //    - El destinatario es correcto
+  //    - El contenido refleja los datos actuales de la entidad
+  //    - El template se renderizó (sin {{variables}} en crudo)
 });
 ```
 
-#### Pattern: Testing Scheduled / Timed Tasks
+#### Patrón: Testing de Tareas Programadas / Con Tiempo
 ```typescript
 test('scheduled task fires at correct time', async ({ page }) => {
-  // Use Playwright Clock API to control time
+  // Usa la Playwright Clock API para controlar el tiempo
   await page.clock.install({ time: new Date('2026-04-14T10:00:00') });
   
-  // Create entity that will trigger timed automation
-  // Fast-forward to just before expected trigger
+  // Crea entidad que disparará la automatización con tiempo
+  // Avanza rápido hasta justo antes del trigger esperado
   await page.clock.fastForward('23:59:00');
-  // Assert: automation has NOT fired yet
+  // Assert: la automatización NO se ha disparado todavía
   
-  // Fast-forward past trigger point
+  // Avanza rápido pasando el punto del trigger
   await page.clock.fastForward('00:02:00');
-  // Assert: automation HAS fired
+  // Assert: la automatización SÍ se ha disparado
 });
 ```
 
 ---
 
-### 4. REAL-TIME & MULTI-USER TESTING
+### 4. TESTING REAL-TIME Y MULTI-USUARIO
 
-For apps with real-time features (chat, live updates, collaborative editing, dashboards):
+Para apps con features en tiempo real (chat, live updates, edición colaborativa, dashboards):
 
 ```typescript
 test('real-time sync between two users', async ({ browser }) => {
@@ -210,29 +210,29 @@ test('real-time sync between two users', async ({ browser }) => {
   const page1 = await ctx1.newPage();
   const page2 = await ctx2.newPage();
   
-  // User 1 performs action
-  // Assert: User 2 sees the change without refreshing
+  // El Usuario 1 realiza la acción
+  // Assert: el Usuario 2 ve el cambio sin refrescar
   
   await ctx1.close();
   await ctx2.close();
 });
 ```
 
-| Check | What to verify |
+| Comprobación | Qué verificar |
 |-------|---------------|
-| Sync | Action by user A is visible to user B in real-time |
-| Ordering | Messages/events appear in correct chronological order |
-| No data loss | Send N items rapidly → all N arrive |
-| Reconnection | Simulate disconnect → reconnect → no data missed |
-| Conflict | Both users edit same thing → resolved, not corrupted |
+| Sincronización | Una acción del usuario A es visible al usuario B en tiempo real |
+| Ordenamiento | Los mensajes/eventos aparecen en orden cronológico correcto |
+| Sin pérdida de datos | Envía N items rápidamente → llegan los N |
+| Reconexión | Simula desconexión → reconecta → no se perdió ningún dato |
+| Conflicto | Ambos usuarios editan lo mismo → resuelto, no corrupto |
 
 ---
 
-### 5. EDGE CASES & BREAK TESTING
+### 5. EDGE CASES Y BREAK TESTING
 
-Apply these to **every critical flow** in the app:
+Aplica estos a **cada flujo crítico** de la app:
 
-#### Concurrency
+#### Concurrencia
 ```typescript
 test('concurrent access does not corrupt data', async ({ browser }) => {
   const ctx1 = await browser.newContext();
@@ -240,60 +240,60 @@ test('concurrent access does not corrupt data', async ({ browser }) => {
   const page1 = await ctx1.newPage();
   const page2 = await ctx2.newPage();
   
-  // Both users attempt same action simultaneously
+  // Ambos usuarios intentan la misma acción simultáneamente
   await Promise.all([
     performCriticalAction(page1),
     performCriticalAction(page2),
   ]);
   
-  // Assert: one succeeds, one gets conflict error
-  // OR: both succeed if action supports concurrency
-  // NEVER: data corruption, duplicate records, or silent failure
+  // Assert: uno tiene éxito, el otro recibe error de conflicto
+  // O: ambos tienen éxito si la acción soporta concurrencia
+  // NUNCA: corrupción de datos, registros duplicados o fallo silencioso
   
   await ctx1.close();
   await ctx2.close();
 });
 ```
 
-#### Network Failures
+#### Fallos de Red
 ```typescript
 test('app handles network failure gracefully', async ({ page }) => {
-  // Navigate and fill form with data
+  // Navega y rellena el formulario con datos
   
-  // Block API calls
+  // Bloquea las llamadas a la API
   await page.route('**/api/**', route => route.abort());
   
-  // Attempt action
-  // Assert: user-friendly error shown (not blank screen or raw error)
-  // Assert: form data preserved (user doesn't lose their input)
-  // Assert: app is still usable after error
+  // Intenta la acción
+  // Assert: error user-friendly mostrado (no pantalla en blanco ni error en crudo)
+  // Assert: los datos del formulario se conservan (el usuario no pierde su input)
+  // Assert: la app sigue siendo usable después del error
 });
 ```
 
-#### Double Submit
+#### Doble Submit
 ```typescript
 test('double submit does not create duplicate', async ({ page }) => {
-  // Fill form
-  // Double-click submit button
+  // Rellena formulario
+  // Doble click en el botón submit
   await page.getByRole('button', { name: /submit|save|create|confirm/i }).dblclick();
   
-  // Assert: only 1 entity created, not 2
+  // Assert: solo 1 entidad creada, no 2
 });
 ```
 
-#### Session Expiry
+#### Expiración de Sesión
 ```typescript
 test('expired session redirects to login', async ({ page }) => {
-  // Clear auth cookies/storage
+  // Limpia las cookies/storage de auth
   await page.context().clearCookies();
   
-  // Attempt protected action
-  // Assert: redirects to login, not 500 error
-  // Assert: after re-login, user returns to intended page
+  // Intenta una acción protegida
+  // Assert: redirecciona al login, no error 500
+  // Assert: tras re-login, el usuario vuelve a la página deseada
 });
 ```
 
-#### Malformed API Input
+#### Input Malformado de API
 ```typescript
 test('API rejects malformed payload', async ({ request }) => {
   const cases = [
@@ -308,147 +308,147 @@ test('API rejects malformed payload', async ({ request }) => {
   for (const { data } of cases) {
     const resp = await request.post('/api/endpoint', { data });
     expect(resp.status()).toBeGreaterThanOrEqual(400);
-    expect(resp.status()).toBeLessThan(500); // Client error, not server crash
+    expect(resp.status()).toBeLessThan(500); // Error de cliente, no crash de servidor
   }
 });
 ```
 
-#### Browser Edge Cases
-- **Back button** after form submit → should not resubmit
-- **Refresh** during operation → should not corrupt state
-- **Multiple tabs** with same session → should stay in sync
-- **Slow connection** (throttle network) → loading states, no timeouts
-- **Zoom / font scaling** → UI remains usable
+#### Edge Cases del Browser
+- **Botón atrás** después de submit de formulario → no debería resubmitir
+- **Refresh** durante una operación → no debería corromper el estado
+- **Múltiples pestañas** con la misma sesión → deberían mantenerse en sync
+- **Conexión lenta** (throttle de red) → estados de loading, sin timeouts
+- **Zoom / escalado de fuente** → la UI sigue siendo usable
 
 ---
 
-### 6. CONSISTENCY TESTING
+### 6. TESTING DE CONSISTENCIA
 
-Verify that data stays synchronized across all layers:
+Verifica que los datos se mantienen sincronizados en todas las capas:
 
-| Layer A | Layer B | Check |
+| Capa A | Capa B | Comprobación |
 |---------|---------|-------|
-| Database state | UI display | Entity status matches what's shown |
-| Entity state | Communication content | If status = "confirmed", email says "confirmed" |
-| Action timestamp | Log timestamp | Events are logged at correct time |
-| List count | Actual items | "Showing 15 results" → exactly 15 items rendered |
-| Sum/totals | Individual values | Dashboard total = sum of individual entries |
-| Cached data | Source data | After update, cached views reflect new data |
+| Estado de DB | Display de UI | El estado de la entidad coincide con lo mostrado |
+| Estado de entidad | Contenido de comunicación | Si status = "confirmed", el email dice "confirmed" |
+| Timestamp de acción | Timestamp de log | Los eventos están loggeados en el momento correcto |
+| Count de lista | Items reales | "Showing 15 results" → exactamente 15 items renderizados |
+| Sumas/totales | Valores individuales | Total del dashboard = suma de las entradas individuales |
+| Datos cacheados | Datos fuente | Después de un update, las vistas cacheadas reflejan los nuevos datos |
 
 ---
 
-### 7. RESPONSIVE & ACCESSIBILITY
+### 7. RESPONSIVE Y ACCESIBILIDAD
 
 ```typescript
-// Test on mobile viewport
+// Testea en viewport mobile
 test.use({ viewport: { width: 375, height: 667 } });
 
 test('critical flow works on mobile', async ({ page }) => {
-  // Navigate through the main flow on mobile
-  // Assert: all buttons tappable, forms fillable, no horizontal scroll
+  // Navega por el flujo principal en mobile
+  // Assert: todos los botones tap-eables, formularios rellenables, sin scroll horizontal
 });
 ```
 
-Quick a11y checks:
-- Every interactive element reachable via keyboard (Tab navigation)
-- Every form field has a label
-- Error messages associated with their field
-- Sufficient color contrast
-- Screen reader can navigate critical flows
+Comprobaciones rápidas de a11y:
+- Cada elemento interactivo alcanzable por teclado (navegación con Tab)
+- Cada campo de formulario tiene un label
+- Los mensajes de error están asociados con su campo
+- Contraste de color suficiente
+- El screen reader puede navegar por los flujos críticos
 
 ---
 
-## Test Execution Strategy
+## Estrategia de Ejecución de Tests
 
-### Priority Order (what to test first)
+### Orden de Prioridad (qué testear primero)
 
-1. **Critical path** — The main thing users do (signup, purchase, create core entity)
-2. **Money flows** — Anything involving payments, billing, credits
-3. **Data integrity** — Operations that create/modify/delete permanent data
-4. **Automations** — Side effects that can't be easily undone (emails, notifications)
-5. **Auth & security** — Login, permissions, session management
-6. **Edge cases** — Concurrency, failures, boundaries
-7. **UX & polish** — Responsive, loading states, error messages
+1. **Camino crítico** — La cosa principal que hacen los usuarios (signup, compra, crear entidad núcleo)
+2. **Flujos de dinero** — Cualquier cosa que involucre pagos, billing, créditos
+3. **Integridad de datos** — Operaciones que crean/modifican/borran datos permanentes
+4. **Automatizaciones** — Efectos secundarios que no se pueden deshacer fácilmente (emails, notificaciones)
+5. **Auth y seguridad** — Login, permisos, gestión de sesiones
+6. **Edge cases** — Concurrencia, fallos, límites
+7. **UX y polish** — Responsive, estados de loading, mensajes de error
 
-### When to use Playwright Agents vs Manual Tests
+### Cuándo usar Playwright Agents vs Tests Manuales
 
-| Use Agents (Planner → Generator) | Write Manual Tests |
+| Usa Agentes (Planner → Generator) | Escribe Tests Manuales |
 |----------------------------------|--------------------|
-| New feature exploration | Complex business logic validation |
-| Broad coverage sweep | Specific regression for known bugs |
-| UI flow testing | API-level testing |
-| After major refactors | Performance-sensitive assertions |
+| Exploración de feature nueva | Validación de lógica de negocio compleja |
+| Cobertura amplia | Regresión específica para bugs conocidos |
+| Testing de flujos UI | Testing a nivel de API |
+| Después de refactors mayores | Aserciones sensibles a performance |
 
 ---
 
-## Test Output Format
+## Formato de Output de Test
 
-For every test executed, produce:
+Para cada test ejecutado, produce:
 
 ```markdown
-### TEST: [descriptive name]
-- **Action:** [what was done]
-- **Expected:** [what should happen]
-- **Actual:** [what really happened]
-- **Status:** ✅ OK / ❌ ERROR
-- **Severity:** Low / Medium / High / Critical
-- **Details:** [technical info if error — stack trace, screenshot, network log]
-- **Probable cause:** [hypothesis]
-- **Suggested fix:** [how it could be resolved]
+### TEST: [nombre descriptivo]
+- **Acción:** [qué se hizo]
+- **Esperado:** [qué debería pasar]
+- **Real:** [qué pasó realmente]
+- **Estado:** ✅ OK / ❌ ERROR
+- **Severidad:** Low / Medium / High / Critical
+- **Detalles:** [info técnica si hay error — stack trace, screenshot, network log]
+- **Causa probable:** [hipótesis]
+- **Fix sugerido:** [cómo podría resolverse]
 ```
 
-## Severity Classification
+## Clasificación de Severidad
 
-| Severity | Criteria | Examples |
+| Severidad | Criterio | Ejemplos |
 |----------|----------|---------|
-| **Critical** | Data loss, security breach, duplicate actions, money affected | Double charge, data leak, corrupted records |
-| **High** | Core flow broken, user blocked | Can't create/edit/delete main entity, auth broken |
-| **Medium** | Degraded functionality, confusing UX | Wrong data in notification, non-descriptive error |
-| **Low** | Cosmetic, minor impact | Typo, alignment issue, missing hover state |
+| **Critical** | Pérdida de datos, brecha de seguridad, acciones duplicadas, dinero afectado | Doble cargo, fuga de datos, registros corruptos |
+| **High** | Flujo núcleo roto, usuario bloqueado | No se puede crear/editar/borrar entidad principal, auth roto |
+| **Medium** | Funcionalidad degradada, UX confusa | Datos equivocados en notificación, error no descriptivo |
+| **Low** | Cosmético, impacto menor | Typo, problema de alineación, hover state que falta |
 
 ---
 
-## Session Summary
+## Resumen de Sesión
 
-At the end of each QA session, produce:
+Al final de cada sesión de QA, produce:
 
 ```markdown
-## 📊 QA Summary
+## 📊 Resumen de QA
 
-### Tests executed: X
-- ✅ Passed: X
-- ❌ Failed: X  
-- ⏭️ Skipped: X
+### Tests ejecutados: X
+- ✅ Pasados: X
+- ❌ Fallidos: X  
+- ⏭️ Saltados: X
 
-### 🔴 Top 5 Critical Bugs
-1. [Most critical bug with description and steps to reproduce]
+### 🔴 Top 5 Bugs Críticos
+1. [Bug más crítico con descripción y pasos de reproducción]
 2. ...
 
-### 💡 Proposed Improvements
-- [Architecture, logic, or UX improvements detected]
+### 💡 Mejoras Propuestas
+- [Mejoras de arquitectura, lógica o UX detectadas]
 
-### 📋 Coverage
-- [Features tested vs pending]
-- [Areas with no coverage identified]
+### 📋 Cobertura
+- [Features testeadas vs pendientes]
+- [Áreas sin cobertura identificadas]
 
-### 🔄 New Regression Tests Added
-- [List of new test files committed to the suite]
+### 🔄 Tests de Regresión Nuevos Añadidos
+- [Lista de archivos de test nuevos commiteados a la suite]
 ```
 
 ---
 
-## Playwright API Quick Reference
+## Referencia rápida de la API de Playwright
 
-### Locators (ALWAYS semantic)
+### Locators (SIEMPRE semánticos)
 ```typescript
 page.getByRole('button', { name: 'Submit' })
 page.getByLabel('Email')
 page.getByPlaceholder('Search...')
 page.getByText('Welcome')
-page.getByTestId('submit-btn')     // fallback when no semantic option
+page.getByTestId('submit-btn')     // fallback cuando no hay opción semántica
 ```
 
-### Assertions (auto-retry built in)
+### Aserciones (auto-retry incorporado)
 ```typescript
 await expect(page).toHaveTitle(/Dashboard/);
 await expect(page).toHaveURL('/dashboard');
@@ -463,21 +463,21 @@ await expect(locator).toHaveAttribute('href', '/path');
 await expect(locator).toContainText('partial');
 ```
 
-### Network Interception
+### Interceptación de Red
 ```typescript
-// Mock API response
+// Mock de respuesta de API
 await page.route('**/api/endpoint', route =>
   route.fulfill({ status: 200, body: JSON.stringify({ id: 1 }) })
 );
 
-// Block requests (simulate failure)
+// Bloquea requests (simula fallo)
 await page.route('**/api/endpoint', route => route.abort());
 
-// Wait for specific API call
+// Espera una llamada de API específica
 const response = await page.waitForResponse('**/api/endpoint');
 expect(response.status()).toBe(200);
 
-// Intercept and modify response
+// Intercepta y modifica la respuesta
 await page.route('**/api/endpoint', async route => {
   const response = await route.fetch();
   const json = await response.json();
@@ -486,15 +486,15 @@ await page.route('**/api/endpoint', async route => {
 });
 ```
 
-### Clock API (for timing-dependent tests)
+### Clock API (para tests dependientes de timing)
 ```typescript
 await page.clock.install({ time: new Date('2026-04-14T20:00:00') });
 await page.clock.fastForward('01:00:00');
 await page.clock.setFixedTime(new Date('2026-04-15T20:00:00'));
-await page.clock.resume(); // back to real time
+await page.clock.resume(); // vuelve al tiempo real
 ```
 
-### API Testing (no browser needed)
+### Testing de API (sin browser)
 ```typescript
 test('API: create entity', async ({ request }) => {
   const response = await request.post('/api/entities', {
@@ -507,7 +507,7 @@ test('API: create entity', async ({ request }) => {
 });
 ```
 
-### Multi-context (multi-user simulation)
+### Multi-context (simulación multi-usuario)
 ```typescript
 test('two users interact', async ({ browser }) => {
   const ctx1 = await browser.newContext();
@@ -515,7 +515,7 @@ test('two users interact', async ({ browser }) => {
   const page1 = await ctx1.newPage();
   const page2 = await ctx2.newPage();
   
-  // ... test interaction ...
+  // ... interacción del test ...
   
   await ctx1.close();
   await ctx2.close();

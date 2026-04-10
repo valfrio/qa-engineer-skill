@@ -1,56 +1,56 @@
-# qa-engineer — Adversarial-First QA Skill for Claude Code
+# qa-engineer — Skill de QA Adversarial para Claude Code
 
-> **You are not testing to confirm features work — you are testing to break them.**
+> **No estás testeando para confirmar que las features funcionan — estás testeando para romperlas.**
 
-A Claude Code skill that turns Claude into an adversarial QA engineer. Built on top of [Playwright Test Agents](https://playwright.dev/docs/test-agents) (Planner → Generator → Healer), structured around **8 mandatory adversarial angles**, and designed to be invoked **on demand** by the developer when they want a QA pass.
+Una skill de Claude Code que convierte a Claude en un QA engineer adversarial. Construida sobre los [Playwright Test Agents](https://playwright.dev/docs/test-agents) (Planner → Generator → Healer), estructurada en torno a **8 ángulos adversariales obligatorios**, y diseñada para invocarse **bajo demanda** por el dev cuando quiere un pase de QA.
 
-This skill is designed primarily for **Claude as the executor**. Humans install it, Claude uses it. The README is also written so any team member can read it and understand what Claude is doing on their behalf.
-
----
-
-## What this skill does
-
-- **Two activation modes — SUGGEST (free) and EXECUTE (on demand).** After any behavioral change, Claude appends a single-line QA suggestion at the end of its message (~50 tokens, functionally free). The full QA pass only runs when you say yes — no automatic test execution, no surprise token spend.
-- **Forces an adversarial mindset.** Every test plan must cover 8 angles: empty inputs, invalid data, boundary values, special chars/injection, double-click/rapid submit, navigation edges, **regression in nearby features**, and auth/permission edges.
-- **Generates real Playwright tests** via the Planner→Generator→Healer agent loop. Tests are committed and become part of a permanent regression suite.
-- **Captures video, traces, and screenshots** on every failure. Trace viewer (`npx playwright show-trace`) gives you a step-by-step timeline with DOM snapshots, network log, console — superior to plain video.
-- **Integrates with CI/CD.** Includes GitHub Actions workflows, Docker config, and a post-deploy script.
+Esta skill está diseñada principalmente para **Claude como ejecutor**. Los humanos la instalan, Claude la usa. El README también está escrito para que cualquier miembro del equipo lo pueda leer y entender qué está haciendo Claude en su nombre.
 
 ---
 
-## Why "adversarial-first"?
+## Qué hace esta skill
 
-Most QA fails because it tries to *confirm* the feature works. A test that fills a form with valid data and clicks submit catches almost zero real bugs — those bugs were never going to ship anyway.
-
-The bugs that ship are the ones nobody thought to try: empty submissions, double-clicks, the back button, the email field with an emoji, the page next door that shared a component with the one you just changed.
-
-This skill encodes the discipline of **trying to break the system** into a structured, repeatable, agent-driven workflow. The 8 adversarial angles are the floor, not the ceiling. Angle 7 (regression in nearby features) is the most-skipped and the most-valuable — this skill makes it non-negotiable.
+- **Dos modos de activación — SUGGEST (gratis) y EXECUTE (bajo demanda).** Tras cualquier cambio behavioral, Claude añade una línea de sugerencia de QA al final de su mensaje (~50 tokens, funcionalmente gratis). El pase de QA completo solo se ejecuta cuando dices que sí — sin ejecución automática de tests, sin gasto sorpresa de tokens.
+- **Fuerza una mentalidad adversarial.** Cada plan de test debe cubrir 8 ángulos: inputs vacíos, datos inválidos, valores límite, caracteres especiales/inyección, doble click/submit rápido, edges de navegación, **regresión en features cercanas**, y edges de auth/permisos.
+- **Genera tests reales de Playwright** vía el loop de agentes Planner → Generator → Healer. Los tests se commitean y pasan a formar parte de una suite de regresión permanente.
+- **Captura vídeo, traces y screenshots** en cada fallo. El trace viewer (`npx playwright show-trace`) te da un timeline paso a paso con snapshots del DOM, network log, console — superior al vídeo plano.
+- **Se integra con CI/CD.** Incluye workflows de GitHub Actions, config de Docker y un script post-deploy. Opcional — la mayoría de equipos corren los tests en local contra el servidor desplegado.
 
 ---
 
-## Installation
+## ¿Por qué "adversarial-first"?
 
-This skill is designed to be installed by **Claude Code** on behalf of the user. The simplest workflow:
+La mayoría del QA falla porque intenta *confirmar* que la feature funciona. Un test que rellena un formulario con datos válidos y hace click en submit caza casi cero bugs reales — esos bugs nunca iban a llegar a producción de todos modos.
 
-### 1. Tell Claude to install it
+Los bugs que llegan a producción son los que nadie pensó en probar: submits vacíos, doble clicks, el botón atrás, el campo de email con un emoji, la página de al lado que compartía un componente con la que acabas de cambiar.
 
-In any Claude Code session, paste this prompt:
+Esta skill codifica la disciplina de **intentar romper el sistema** en un workflow estructurado, repetible y orquestado por agentes. Los 8 ángulos adversariales son el suelo, no el techo. El Ángulo 7 (regresión en features cercanas) es el más saltado y el más valioso — esta skill lo hace no negociable.
+
+---
+
+## Instalación
+
+Esta skill está diseñada para ser instalada por **Claude Code** en nombre del usuario. El workflow más simple:
+
+### 1. Pídele a Claude que la instale
+
+En cualquier sesión de Claude Code, pega este prompt:
 
 ```
-Install the qa-engineer skill from https://github.com/AppsurDesarrollo/qa-engineer-skill
-into ~/.agents/skills/qa-engineer/. Follow the installation steps in the README of that repo.
-After installing, verify SKILL.md loads correctly and report back.
+Instala la skill qa-engineer desde https://github.com/AppsurDesarrollo/qa-engineer-skill
+en ~/.agents/skills/qa-engineer/. Sigue los pasos de instalación del README de ese repo.
+Después de instalar, verifica que SKILL.md carga correctamente y reporta.
 ```
 
-Claude will:
-1. Clone the repo into `~/.agents/skills/qa-engineer/` (creating the directory if needed).
-2. Verify the directory contains `SKILL.md` and the `references/` subdirectory.
-3. Read `SKILL.md` to confirm the frontmatter parses (`name: qa-engineer`).
-4. Report success or any error.
+Claude:
+1. Clonará el repo en `~/.agents/skills/qa-engineer/` (creando el directorio si hace falta).
+2. Verificará que el directorio contiene `SKILL.md` y el subdirectorio `references/`.
+3. Leerá `SKILL.md` para confirmar que el frontmatter parsea (`name: qa-engineer`).
+4. Reportará éxito o cualquier error.
 
-### 2. Manual installation (alternative)
+### 2. Instalación manual (alternativa)
 
-If you prefer to install it yourself:
+Si prefieres instalarla tú mismo:
 
 ```bash
 # Linux / macOS
@@ -64,187 +64,188 @@ cd ~/.agents/skills
 git clone https://github.com/AppsurDesarrollo/qa-engineer-skill qa-engineer
 ```
 
-### 3. Verify
+### 3. Verificación
 
-In Claude Code:
+En Claude Code:
 
 ```
-Read ~/.agents/skills/qa-engineer/SKILL.md and confirm the skill is installed correctly.
+Lee ~/.agents/skills/qa-engineer/SKILL.md y confirma que la skill está instalada correctamente.
 ```
 
-Claude should reply with the skill name (`qa-engineer`), version, and a brief summary of the 8 adversarial angles. If it does, the skill is ready.
+Claude debería responder con el nombre de la skill (`qa-engineer`), la versión, y un resumen breve de los 8 ángulos adversariales. Si lo hace, la skill está lista.
 
-### 4. (First use only) Set up Playwright in the target project
+### 4. (Solo el primer uso) Configura Playwright en el proyecto destino
 
-The first time the skill is invoked in a project, Claude will detect that Playwright isn't configured and offer to set it up. Just say yes. Setup is fully documented in [`references/setup.md`](references/setup.md) — Claude will follow it step by step.
+La primera vez que la skill se invoque en un proyecto, Claude detectará que Playwright no está configurado y se ofrecerá a configurarlo. Solo di que sí. El setup está completamente documentado en [`references/setup.md`](references/setup.md) — Claude lo seguirá paso a paso.
 
-You'll need:
+Necesitarás:
 - Node.js >= 18
-- A running web app (local URL or staging URL)
-- (If protected) test user credentials
+- Una app web corriendo (URL local o URL de staging)
+- (Si está protegida) credenciales de usuario de test
 
 ---
 
-## How Claude uses this skill — two modes
+## Cómo Claude usa esta skill — dos modos
 
-The skill has **two activation modes**. Understanding the difference is the key to using it cost-effectively.
+La skill tiene **dos modos de activación**. Entender la diferencia es la clave para usarla de forma cost-effective.
 
-### SUGGEST mode (automatic, ~50 tokens)
+### Modo SUGGEST (automático, ~50 tokens)
 
-After Claude makes any **behavioral change** to your project (new feature, bug fix, refactor, schema change, form/flow change), it appends a single line at the end of its message:
+Después de que Claude haga cualquier **cambio behavioral** en tu proyecto (nueva feature, bug fix, refactor, cambio de schema, cambio de formulario/flujo), añade una sola línea al final de su mensaje:
 
 > 💡 *Este cambio toca el formulario de checkout. ¿Lanzo QA adversarial? → di* `haz QA del checkout`
 
-That's it. No tests run. No agents fire. No reference files loaded. The line is a reminder that QA is available, nothing more. Cost: ~50 tokens.
+Eso es todo. No se ejecutan tests. No se disparan agentes. No se cargan archivos de referencia. La línea es un recordatorio de que QA está disponible, nada más. Coste: ~50 tokens.
 
-If you ignore the line, nothing happens. If you say "no thanks" or "later", Claude stops suggesting QA for the rest of the conversation.
+Si ignoras la línea, no pasa nada. Si dices "no gracias" o "luego", Claude deja de sugerir QA en el resto de la conversación.
 
-### EXECUTE mode (manual, ~100K-300K tokens per feature)
+### Modo EXECUTE (manual, ~100K-300K tokens por feature)
 
-When you explicitly ask for QA (or say yes to a SUGGEST line), Claude runs the full workflow:
+Cuando pides QA explícitamente (o respondes sí a una línea SUGGEST), Claude ejecuta el workflow completo:
 
-1. **Identify what to test AND its blast radius.** Claude lists 3–5 nearby features that might be affected (Angle 7 input).
-2. **Run the existing regression suite** if one exists. Catches anything that's already broken.
-3. **Plan adversarial tests for the target feature.** Claude prompts the Playwright Planner agent with all 8 angles inline.
-4. **Audit the plan against the 8 angles** before generating code. If any angle is missing, Claude sends the plan back for revision.
-5. **Generate Playwright tests** via the Generator agent.
-6. **Run them.** If failures, the Healer agent auto-repairs selectors and re-runs.
-7. **Report results** in a structured QA report (see `references/example-qa-report.md`).
-8. **Commit passing tests** to the regression suite — only after you approve.
+1. **Identifica qué testear Y su radio de explosión.** Claude lista 3–5 features cercanas que podrían estar afectadas (input del Ángulo 7).
+2. **Ejecuta la suite de regresión existente** si la hay. Caza cualquier cosa que ya esté rota.
+3. **Planea tests adversariales para la feature objetivo.** Claude llama al agente Planner de Playwright con los 8 ángulos inline.
+4. **Audita el plan contra los 8 ángulos** antes de generar código. Si falta algún ángulo, Claude devuelve el plan para revisión.
+5. **Genera tests de Playwright** vía el agente Generator.
+6. **Los ejecuta.** Si hay fallos, el agente Healer auto-repara los selectores y los re-ejecuta.
+7. **Reporta resultados** en un report estructurado de QA (ver `references/example-qa-report.md`).
+8. **Commitea los tests que pasan** a la suite de regresión — solo después de tu aprobación.
 
-### How to trigger EXECUTE mode
+### Cómo disparar el modo EXECUTE
 
-Tell Claude any of these (mix Spanish and English freely):
+Dile a Claude cualquiera de estas cosas (mezcla español e inglés libremente):
 
 - "haz QA del checkout" / "testea esto" / "rompe el formulario de login"
 - "valida la creación de pedidos adversarialmente"
 - "run QA on the order flow" / "test this adversarially"
 - "lanza la suite de regresión"
 
-Or simply reply "sí" / "yes" / "dale" / "go" to a SUGGEST line you previously got.
+O simplemente responde "sí" / "yes" / "dale" / "go" a una línea SUGGEST que recibiste antes.
 
-### When to actually run EXECUTE mode
+### Cuándo ejecutar el modo EXECUTE en la práctica
 
-There's no rule. Common patterns:
+No hay regla. Patrones comunes:
 
-- **Before merging a PR** — adversarial pass on the changed feature.
-- **Before deploying** — full regression suite on staging.
-- **After a tricky bug fix** — verify the fix and check Angle 7 (nearby breakage).
-- **Periodically** — full pass over critical flows weekly.
-- **Skip it** for prototypes, spikes, throwaway code. The SUGGEST line will still appear, but feel free to ignore it.
+- **Antes de mergear un PR** — pase adversarial sobre la feature modificada.
+- **Antes de desplegar** — suite de regresión completa contra staging.
+- **Después de un bug fix complicado** — verifica el fix y revisa el Ángulo 7 (rotura cercana).
+- **Periódicamente** — pase completo sobre los flujos críticos semanalmente.
+- **Sáltatelo** para prototipos, spikes, código throwaway. La línea SUGGEST seguirá apareciendo, pero ignórala tranquilamente.
 
-### The 8 adversarial angles (the heart of the skill)
+### Los 8 ángulos adversariales (el corazón de la skill)
 
-| # | Angle | Example attack |
+| # | Ángulo | Ejemplo de ataque |
 |---|-------|----------------|
-| 1 | Empty inputs | Submit empty form, send `{}` body |
-| 2 | Invalid data | Email `not-an-email`, date `2026-13-45` |
-| 3 | Boundary values | `0`, `-1`, `MAX_INT`, 10K-char string |
-| 4 | Special chars / injection | `<script>`, SQL injection, emoji, RTL |
-| 5 | Double-click / rapid submit | Spam submit 5x in 200ms |
-| 6 | Navigation edges | Back button after submit, refresh mid-flow, multi-tab |
-| 7 | **Regression in nearby features** | After editing form X, re-test the list view, sibling pages, shared components, exports |
-| 8 | Auth / permission edges | Logged out, wrong role, expired session, cross-tenant |
+| 1 | Inputs vacíos | Submit de formulario vacío, body `{}` |
+| 2 | Datos inválidos | Email `not-an-email`, fecha `2026-13-45` |
+| 3 | Valores límite | `0`, `-1`, `MAX_INT`, string de 10K chars |
+| 4 | Caracteres especiales / inyección | `<script>`, SQL injection, emoji, RTL |
+| 5 | Doble click / submit rápido | Spam de submit 5 veces en 200ms |
+| 6 | Edges de navegación | Botón atrás tras submit, refresh a mitad de flujo, multi-pestaña |
+| 7 | **Regresión en features cercanas** | Tras editar el formulario X, re-testea la vista de lista, las páginas hermanas, los componentes compartidos, los exports |
+| 8 | Edges de auth / permisos | Sin sesión, rol equivocado, sesión expirada, cross-tenant |
 
-Full descriptions, rationale, and per-angle attack examples in [`SKILL.md`](SKILL.md).
+Descripciones completas, rationale y ejemplos de ataque por ángulo en [`SKILL.md`](SKILL.md).
 
-### What you (the human) review
+### Lo que tú (el humano) revisas
 
-After Claude runs QA, review:
+Después de que Claude ejecute QA, revisa:
 
-1. **The QA report** Claude produces (format in `references/example-qa-report.md`). Look at: Top 5 critical bugs, coverage gaps, new tests added.
-2. **The trace files** for any failures: `npx playwright show-trace test-results/.../trace.zip`. Interactive timeline with DOM snapshots, network, console.
-3. **The new test files** Claude committed to `tests/`. They become permanent — make sure they're testing the right thing.
-4. **The Angle 7 section** of the report. If Claude didn't re-test nearby features, ask why.
+1. **El report de QA** que produce Claude (formato en `references/example-qa-report.md`). Mira: Top 5 bugs críticos, huecos de cobertura, tests nuevos añadidos.
+2. **Los archivos de trace** en cualquier fallo: `npx playwright show-trace test-results/.../trace.zip`. Timeline interactivo con snapshots del DOM, network, console.
+3. **Los archivos de test nuevos** que Claude commiteó a `tests/`. Pasan a ser permanentes — asegúrate de que están testeando lo correcto.
+4. **La sección del Ángulo 7** del report. Si Claude no re-testeó las features cercanas, pregunta por qué.
 
 ---
 
-## Running tests against a remote server (local dev → staging/prod)
+## Ejecutar tests en local contra un servidor remoto (dev local → staging/prod)
 
-You don't need CI/CD to use this skill. The most common workflow is **running Playwright from a developer's local machine against a deployed server** (staging or production-like). Setup:
+No necesitas CI/CD para usar esta skill. El workflow más común es **ejecutar Playwright desde la máquina local del dev contra un servidor desplegado** (staging o similar a producción). Setup:
 
 ```bash
-# In your project, after Playwright is installed:
+# En tu proyecto, después de instalar Playwright:
 export BASE_URL=https://staging.example.com
 export TEST_USER_EMAIL=qa@example.com
-export TEST_USER_PASSWORD=your_test_password
+export TEST_USER_PASSWORD=tu_password_de_test
 
 npx playwright test
 ```
 
-Or pass them inline:
+O pásalas inline:
 
 ```bash
 BASE_URL=https://staging.example.com TEST_USER_EMAIL=qa@example.com TEST_USER_PASSWORD=xxx npx playwright test
 ```
 
-`playwright.config.ts` already reads `BASE_URL` from the environment (see [`references/setup.md`](references/setup.md)). Tests will hit the deployed server, capture videos/traces locally in `test-results/`, and produce the report on your machine.
+`playwright.config.ts` ya lee `BASE_URL` del entorno (ver [`references/setup.md`](references/setup.md)). Los tests pegarán al servidor desplegado, capturarán vídeos/traces localmente en `test-results/`, y producirán el report en tu máquina.
 
-**Why this is enough for most teams:**
+**Por qué esto basta para la mayoría de equipos:**
 
-- No GitHub secrets to manage.
-- No CI minutes consumed.
-- Traces and videos stay on your machine — easier to inspect.
-- You decide when to run, not a pipeline.
+- Sin secrets de GitHub que gestionar.
+- Sin minutos de CI consumidos.
+- Los traces y vídeos se quedan en tu máquina — más fácil de inspeccionar.
+- Tú decides cuándo ejecutar, no un pipeline.
 
-GitHub Actions integration is documented in [`references/ci-cd.md`](references/ci-cd.md) for teams that want it, but it's **optional**.
+La integración con GitHub Actions está documentada en [`references/ci-cd.md`](references/ci-cd.md) para los equipos que la quieran, pero es **opcional**.
 
 ---
 
-## Repository structure
+## Estructura del repositorio
 
 ```
 qa-engineer/
-├── SKILL.md                          # Main skill file (Claude reads this when invoked)
-├── README.md                         # This file (human-readable)
-├── CHANGELOG.md                      # Version history
+├── SKILL.md                          # Archivo principal de la skill (Claude lo lee al invocarse)
+├── README.md                         # Este archivo (legible por humanos)
+├── INSTALL.md                        # Guía de instalación paso a paso para Claude
+├── CHANGELOG.md                      # Historial de versiones
 ├── LICENSE                           # MIT
-├── playwright-qa-agents.skill        # Compiled artifact (gzip), regenerated on release
+├── playwright-qa-agents.skill        # Artefacto compilado (gzip), regenerado en cada release
 └── references/
-    ├── setup.md                      # First-time Playwright setup, auth, video/trace config
-    ├── qa-methodology.md             # Test categories, patterns, Playwright API reference
-    ├── ci-cd.md                      # GitHub Actions, Docker, post-deploy script
-    ├── spec-template.md              # Example: well-written test plan covering all 8 angles
-    └── example-qa-report.md          # Example: QA report with bugs, severity, recommendations
+    ├── setup.md                      # Setup inicial de Playwright, auth, config de vídeo/trace
+    ├── qa-methodology.md             # Categorías de test, patrones, referencia de la API de Playwright
+    ├── ci-cd.md                      # GitHub Actions, Docker, script post-deploy
+    ├── spec-template.md              # Ejemplo: plan de test bien escrito cubriendo los 8 ángulos
+    └── example-qa-report.md          # Ejemplo: report de QA con bugs, severidad, recomendaciones
 ```
 
 ---
 
-## Video, traces, and artifacts
+## Vídeo, traces y artefactos
 
-Playwright captures three types of evidence on every failure (configured in `playwright.config.ts`):
+Playwright captura tres tipos de evidencia en cada fallo (configurado en `playwright.config.ts`):
 
-| Artifact | What it is | When to use |
+| Artefacto | Qué es | Cuándo usarlo |
 |---------|-----------|-------------|
-| **Video** (`.webm`) | Full recording of the browser session | Quick visual reproduction of what the user "saw" |
-| **Trace** (`.zip`) | Interactive timeline: DOM snapshots, network, console, action log | **Primary debugging tool.** Open with `npx playwright show-trace`. Click any step → see DOM at that moment |
-| **Screenshot** (`.png`) | Static image at moment of failure | Embedding in reports, quick sharing |
+| **Vídeo** (`.webm`) | Grabación completa de la sesión del browser | Reproducción visual rápida de lo que el usuario "vio" |
+| **Trace** (`.zip`) | Timeline interactivo: snapshots del DOM, network, console, log de acciones | **Herramienta principal de debugging.** Ábrelo con `npx playwright show-trace`. Click en cualquier paso → ve el DOM en ese momento |
+| **Screenshot** (`.png`) | Imagen estática en el momento del fallo | Para incrustar en reports, compartir rápido |
 
-Defaults configured by this skill:
-- `video: 'on-first-retry'` — only record on failures
-- `trace: 'on-first-retry'` — same
+Defaults configurados por esta skill:
+- `video: 'on-first-retry'` — solo grabar en fallos
+- `trace: 'on-first-retry'` — igual
 - `screenshot: 'only-on-failure'`
 
-In CI, all three are uploaded as GitHub Actions artifacts (configured in [`references/ci-cd.md`](references/ci-cd.md)). Anyone (or any future Claude session) can download them and review what happened.
+En CI, los tres se suben como artefactos de GitHub Actions (configurado en [`references/ci-cd.md`](references/ci-cd.md)). Cualquiera (o cualquier sesión futura de Claude) puede descargarlos y revisar qué pasó.
 
 ---
 
-## Contributing
+## Contribuir
 
-This skill is maintained by the AppsurDesarrollo team. Contributions welcome — fork, branch, PR. Before submitting:
+Esta skill la mantiene el equipo de AppsurDesarrollo. Las contribuciones son bienvenidas — fork, branch, PR. Antes de enviar:
 
-1. The change must align with the adversarial-first philosophy. PRs that water down Angle 7 or soften the "try to break it" mantra will be rejected.
-2. New attack examples / patterns should be added to [`references/qa-methodology.md`](references/qa-methodology.md) and (if applicable) the 8-angle table in [`SKILL.md`](SKILL.md).
-3. Bump the version in `SKILL.md` frontmatter and add an entry to `CHANGELOG.md`.
-
----
-
-## License
-
-MIT — see [`LICENSE`](LICENSE).
+1. El cambio debe alinearse con la filosofía adversarial-first. Los PRs que diluyan el Ángulo 7 o suavicen el mantra "intenta romperlo" serán rechazados.
+2. Los ejemplos de ataque / patrones nuevos deberían añadirse a [`references/qa-methodology.md`](references/qa-methodology.md) y (si aplica) a la tabla de los 8 ángulos en [`SKILL.md`](SKILL.md).
+3. Sube la versión en el frontmatter de `SKILL.md` y añade una entrada a `CHANGELOG.md`.
 
 ---
 
-## Acknowledgments
+## Licencia
 
-Built on top of Microsoft's [Playwright Test Agents](https://playwright.dev/docs/test-agents) (Planner / Generator / Healer). Inspired by the adversarial testing philosophy of [`expect-cli`](https://www.npmjs.com/package/expect-cli), extended with structured agent loops, regression discipline, and CI/CD integration.
+MIT — ver [`LICENSE`](LICENSE).
+
+---
+
+## Agradecimientos
+
+Construida sobre los [Playwright Test Agents](https://playwright.dev/docs/test-agents) de Microsoft (Planner / Generator / Healer). Inspirada por la filosofía de testing adversarial de [`expect-cli`](https://www.npmjs.com/package/expect-cli), extendida con loops de agentes estructurados, disciplina de regresión e integración CI/CD.
