@@ -3,9 +3,9 @@ name: qa-engineer
 description: "QA E2E adversarial. Dos modos de activación — modo SUGGEST (auto, bajo coste) y modo EXECUTE (a petición del usuario, caro). El mantra central: NO estás testeando para confirmar que las features funcionan — estás testeando para INTENTAR ROMPERLAS. Usa los Playwright Test Agents (Planner → Generator → Healer) orquestados por Claude, estructurados en torno a 8 ángulos adversariales obligatorios (inputs vacíos, datos inválidos, valores límite, caracteres especiales/inyección, doble click, edge cases de navegación, regresión en features cercanas, edges de auth/permisos). El Ángulo 7 (regresión en features cercanas) es no negociable: cada pase de QA re-testea los vecinos del código que cambió. Modo SUGGEST: carga esta skill en contexto siempre que Claude haga cualquier cambio behavioral (nueva feature, bug fix, refactor, cambio de schema/API, modificación de un formulario o flujo). En modo SUGGEST Claude NO ejecuta ningún test — añade una línea de sugerencia al final del mensaje de implementación ofreciendo un pase adversarial con la frase exacta para invocarlo. Modo EXECUTE: cuando el usuario pide QA explícitamente con frases como 'haz QA', 'testea esto', 'rompe esto', 'valida esto', 'prueba la app', 'lanza tests', 'run QA', 'test this adversarially', o responde sí/dale/yes/go a una línea SUGGEST, ejecuta el workflow completo Planner → Generator → Healer. NUNCA ejecutes el workflow completo sin consentimiento explícito del usuario. Cubre: setup inicial de Playwright, setup de auth para apps protegidas, generación adversarial de planes de test, ejecución de tests, self-healing, integración CI/CD opcional con artefactos de vídeo/trace, y una metodología completa de QA para validación exhaustiva. Funciona con cualquier app web independientemente del stack."
 license: MIT
 metadata:
-  author: AppsurDesarrollo
+  author: valfrio
   version: "2.2.0"
-  repository: "https://github.com/AppsurDesarrollo/qa-engineer-skill"
+  repository: "https://github.com/valfrio/qa-engineer-skill"
 ---
 
 # qa-engineer — Skill de Testing E2E Adversarial

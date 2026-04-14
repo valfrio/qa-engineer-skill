@@ -37,7 +37,7 @@ Esta skill está diseñada para ser instalada por **Claude Code** en nombre del 
 En cualquier sesión de Claude Code, pega este prompt:
 
 ```
-Instala la skill qa-engineer desde https://github.com/AppsurDesarrollo/qa-engineer-skill
+Instala la skill qa-engineer desde https://github.com/valfrio/qa-engineer-skill
 en ~/.agents/skills/qa-engineer/. Sigue los pasos de instalación del README de ese repo.
 Después de instalar, verifica que SKILL.md carga correctamente y reporta.
 ```
@@ -56,12 +56,12 @@ Si prefieres instalarla tú mismo:
 # Linux / macOS
 mkdir -p ~/.agents/skills
 cd ~/.agents/skills
-git clone https://github.com/AppsurDesarrollo/qa-engineer-skill qa-engineer
+git clone https://github.com/valfrio/qa-engineer-skill qa-engineer
 
 # Windows (Git Bash)
 mkdir -p ~/.agents/skills
 cd ~/.agents/skills
-git clone https://github.com/AppsurDesarrollo/qa-engineer-skill qa-engineer
+git clone https://github.com/valfrio/qa-engineer-skill qa-engineer
 ```
 
 ### 3. Verificación
@@ -232,7 +232,7 @@ En CI, los tres se suben como artefactos de GitHub Actions (configurado en [`ref
 
 ## Contribuir
 
-Esta skill la mantiene el equipo de AppsurDesarrollo. Las contribuciones son bienvenidas — fork, branch, PR. Antes de enviar:
+Las contribuciones son bienvenidas — fork, branch, PR. Antes de enviar:
 
 1. El cambio debe alinearse con la filosofía adversarial-first. Los PRs que diluyan el Ángulo 7 o suavicen el mantra "intenta romperlo" serán rechazados.
 2. Los ejemplos de ataque / patrones nuevos deberían añadirse a [`references/qa-methodology.md`](references/qa-methodology.md) y (si aplica) a la tabla de los 8 ángulos en [`SKILL.md`](SKILL.md).

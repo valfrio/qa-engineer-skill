@@ -36,7 +36,7 @@ ls ~/.agents/skills/qa-engineer/SKILL.md 2>/dev/null && echo "ALREADY_INSTALLED"
 ```bash
 mkdir -p ~/.agents/skills
 cd ~/.agents/skills
-git clone https://github.com/AppsurDesarrollo/qa-engineer-skill qa-engineer
+git clone https://github.com/valfrio/qa-engineer-skill qa-engineer
 ```
 
 Si el usuario no tiene acceso a la red o la URL del repo falla, **detente** y pregunta al usuario cómo quiere proceder (descarga manual, mirror distinto, etc.). No te inventes URLs de fallback.

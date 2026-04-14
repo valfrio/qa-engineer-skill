@@ -18,7 +18,7 @@ Traducción completa al español de toda la documentación de la skill (SKILL.md
 
 ### Por qué
 
-El equipo de AppsurDesarrollo trabaja en español. Tener la skill en inglés añadía fricción de lectura al revisar reports de QA, debuggear comportamiento de la skill, o entender el flujo de los dos modos. La traducción reduce esa fricción a coste cero (es solo documentación, no cambia el código de Playwright ni la forma en que la skill se activa).
+Trabajamos en español. Tener la skill en inglés añadía fricción de lectura al revisar reports de QA, debuggear comportamiento de la skill, o entender el flujo de los dos modos. La traducción reduce esa fricción a coste cero (es solo documentación, no cambia el código de Playwright ni la forma en que la skill se activa).
 
 ---
 
