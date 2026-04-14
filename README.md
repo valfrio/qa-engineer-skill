@@ -1,14 +1,33 @@
-# qa-engineer — Skill de QA Adversarial para Claude Code
+# qa-engineer — QA Adversarial para Claude Code
 
 > **No estás testeando para confirmar que las features funcionan — estás testeando para romperlas.**
 
-Una skill de Claude Code que convierte a Claude en un QA engineer adversarial. Construida sobre los [Playwright Test Agents](https://playwright.dev/docs/test-agents) (Planner → Generator → Healer), estructurada en torno a **8 ángulos adversariales obligatorios**, y diseñada para invocarse **bajo demanda** por el dev cuando quiere un pase de QA.
+Convierte a Claude en un QA engineer adversarial. Construido sobre los [Playwright Test Agents](https://playwright.dev/docs/test-agents) (Planner → Generator → Healer), estructurado en torno a **8 ángulos adversariales obligatorios**.
 
-Esta skill está diseñada principalmente para **Claude como ejecutor**. Los humanos la instalan, Claude la usa. El README también está escrito para que cualquier miembro del equipo lo pueda leer y entender qué está haciendo Claude en su nombre.
+Se puede instalar de **dos formas** según tu flujo de trabajo: como **skill** (este repo) o como **comando `/qa`** (vive en [AppsurDesarrollo/claude-commands](https://github.com/AppsurDesarrollo/claude-commands)). Las dos comparten la metodología; cambia la forma de disparar el pase de QA.
 
 ---
 
-## Qué hace esta skill
+## Skill vs Comando — ¿cuál instalar?
+
+| | **Skill** (este repo) | **Comando `/qa`** |
+|---|---|---|
+| **Activación** | Automática (SUGGEST) + manual (EXECUTE) | Solo manual |
+| **Tras un cambio behavioral** | Claude añade una línea de sugerencia al final del mensaje (~50 tokens): *"💡 Este cambio toca X. ¿Lanzo QA? → di `haz QA de X`"* | No pasa nada — tú decides cuándo invocar |
+| **Cómo se dispara el pase** | Dices "haz QA de X", "sí" a una línea SUGGEST, o `/qa` | Escribes `/qa` |
+| **Coste en reposo** | ~50 tokens por cada mensaje de implementación (la línea SUGGEST) | Cero |
+| **Coste al ejecutar** | 100K–300K tokens por pase | 100K–300K tokens por pase |
+| **Ventaja principal** | **Descubribilidad**: Claude te recuerda que QA está disponible tras cada cambio — no se te olvida ejecutarlo cuando toca | **Control total**: cero ruido, cero sugerencias. Tú decides 100% cuándo se hace QA |
+| **Mejor para** | Devs que trabajan continuamente en un proyecto y quieren disciplina de QA por defecto | Equipos que prefieren QA como paso explícito (p.ej. pre-merge, pre-deploy) o que no quieren líneas extra en las respuestas de Claude |
+| **Instalación** | Clonar este repo en `~/.agents/skills/qa-engineer/` | `/actualizar-comandos` desde AppsurDesarrollo/claude-commands |
+
+**¿Puedo tener ambos?** Sí. La skill y el comando son complementarios — la skill añade la línea SUGGEST tras los cambios, y el comando `/qa` queda como atajo manual. Si tienes los dos instalados y dices `/qa`, se ejecuta el comando; si dices "haz QA", se ejecuta la skill en modo EXECUTE. El pase final es equivalente.
+
+**Regla práctica:** empieza con el comando. Si notas que olvidas invocar QA cuando tocaría, instala también la skill para que te lo recuerde.
+
+---
+
+## Qué hace
 
 - **Dos modos de activación — SUGGEST (gratis) y EXECUTE (bajo demanda).** Tras cualquier cambio behavioral, Claude añade una línea de sugerencia de QA al final de su mensaje (~50 tokens, funcionalmente gratis). El pase de QA completo solo se ejecuta cuando dices que sí — sin ejecución automática de tests, sin gasto sorpresa de tokens.
 - **Fuerza una mentalidad adversarial.** Cada plan de test debe cubrir 8 ángulos: inputs vacíos, datos inválidos, valores límite, caracteres especiales/inyección, doble click/submit rápido, edges de navegación, **regresión en features cercanas**, y edges de auth/permisos.
@@ -30,9 +49,13 @@ Esta skill codifica la disciplina de **intentar romper el sistema** en un workfl
 
 ## Instalación
 
-Esta skill está diseñada para ser instalada por **Claude Code** en nombre del usuario. El workflow más simple:
+Elige según lo que leíste en la tabla Skill vs Comando más arriba.
 
-### 1. Pídele a Claude que la instale
+### Opción A — Instalar como skill (este repo)
+
+La skill está diseñada para ser instalada por **Claude Code** en nombre del usuario. El workflow más simple:
+
+#### 1. Pídele a Claude que la instale
 
 En cualquier sesión de Claude Code, pega este prompt:
 
@@ -48,7 +71,7 @@ Claude:
 3. Leerá `SKILL.md` para confirmar que el frontmatter parsea (`name: qa-engineer`).
 4. Reportará éxito o cualquier error.
 
-### 2. Instalación manual (alternativa)
+#### 2. Instalación manual (alternativa)
 
 Si prefieres instalarla tú mismo:
 
@@ -64,7 +87,7 @@ cd ~/.agents/skills
 git clone https://github.com/valfrio/qa-engineer-skill qa-engineer
 ```
 
-### 3. Verificación
+#### 3. Verificación
 
 En Claude Code:
 
@@ -74,7 +97,7 @@ Lee ~/.agents/skills/qa-engineer/SKILL.md y confirma que la skill está instalad
 
 Claude debería responder con el nombre de la skill (`qa-engineer`), la versión, y un resumen breve de los 8 ángulos adversariales. Si lo hace, la skill está lista.
 
-### 4. (Solo el primer uso) Configura Playwright en el proyecto destino
+#### 4. (Solo el primer uso) Configura Playwright en el proyecto destino
 
 La primera vez que la skill se invoque en un proyecto, Claude detectará que Playwright no está configurado y se ofrecerá a configurarlo. Solo di que sí. El setup está completamente documentado en [`references/setup.md`](references/setup.md) — Claude lo seguirá paso a paso.
 
@@ -82,6 +105,35 @@ Necesitarás:
 - Node.js >= 18
 - Una app web corriendo (URL local o URL de staging)
 - (Si está protegida) credenciales de usuario de test
+
+---
+
+### Opción B — Instalar como comando `/qa`
+
+El comando `/qa` vive en [AppsurDesarrollo/claude-commands](https://github.com/AppsurDesarrollo/claude-commands) junto con el resto de comandos del equipo. Si ya tienes instalados los comandos de AppsurDesarrollo, basta con ejecutar:
+
+```
+/actualizar-comandos
+```
+
+Esto descarga la última versión del repo y sincroniza `qa.md` + `qa/references/*` en `~/.claude/commands/`.
+
+Si no tienes los comandos instalados todavía, el one-liner:
+
+```bash
+gh repo clone AppsurDesarrollo/claude-commands /tmp/appsur-claude-commands \
+  && mkdir -p ~/.claude/commands \
+  && cp /tmp/appsur-claude-commands/*.md ~/.claude/commands/ \
+  && for dir in /tmp/appsur-claude-commands/*/; do \
+       name=$(basename "$dir"); \
+       [ "$name" = ".git" ] && continue; \
+       rm -rf "$HOME/.claude/commands/$name"; \
+       cp -R "$dir" "$HOME/.claude/commands/$name"; \
+     done \
+  && rm -rf /tmp/appsur-claude-commands
+```
+
+Para usarlo, escribe `/qa` en Claude Code. El comando ejecuta el mismo pase adversarial (6 fases: verificación, scope, 8 ángulos, Planner→Generator→Healer, metodología, report, commit) — la diferencia con la skill está solo en cómo se dispara, no en lo que hace.
 
 ---
 
